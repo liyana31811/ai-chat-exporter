@@ -418,7 +418,7 @@ export function PageSnapshotPanel({ sourceTabId, settings, locale, recoveryAvail
         ) : (
           <div className="snapshot-recovery-off">
             <p className="text-xs text-muted">
-              {T('Optional and off by default. When enabled, the visible content of this conversation is kept as a recovery draft that stays only in this browser, for 7 days unless you choose a longer time on the recovery page, up to 4 MiB in total. Nothing is uploaded or synced, and protection does not restart by itself after the browser restarts.')}
+              {T('Local recovery is off by default and stays only in this browser. Default limits are 7 days and 4 MiB total. Change retention or enable expanded storage on the recovery page. Nothing is uploaded or synced; protection does not resume after a browser restart.')}
             </p>
             <div className="snapshot-recovery-actions">
               <button

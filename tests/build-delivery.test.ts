@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { copyFileSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { copyFileSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
@@ -17,6 +17,52 @@ describe('unpacked extension delivery', () => {
     expect(verifyScript).toContain('Unpacked extension differs')
     expect(verifyScript).toContain('verifyRoleLabelUnicode()')
     expect(verifyScript).toContain('Built role labels contain a truncated emoji surrogate')
+  })
+
+  it('keeps expanded storage optional on Chrome/Edge and verifies the browser-specific contract', () => {
+    const packageJson = JSON.parse(readFileSync(resolve(repoRoot, 'package.json'), 'utf8'))
+    const verifyScript = readFileSync(resolve(repoRoot, 'scripts/verify-build.js'), 'utf8')
+
+    expect(packageJson.manifest.permissions).not.toContain('unlimitedStorage')
+    expect(packageJson.manifest.optional_permissions).toContain('unlimitedStorage')
+    expect(verifyScript).toContain("manifest.permissions?.includes('unlimitedStorage')")
+    expect(verifyScript).toContain("!manifest.optional_permissions?.includes('unlimitedStorage')")
+    expect(verifyScript).toContain('Firefox cannot request unlimitedStorage optionally')
+    expect(verifyScript).toContain('Chrome/Edge storage permission must remain optional')
+    expect(verifyScript).toContain('Optional expanded storage permission is missing')
+  })
+
+  it('patches Firefox expanded storage into required permissions without mutating the Chrome manifest', () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'ai-chat-exporter-firefox-permissions-'))
+    const manifestPath = join(tempDir, 'manifest.json')
+    const chromeManifest = {
+      manifest_version: 3,
+      permissions: ['storage', 'activeTab', 'downloads', 'alarms'],
+      optional_permissions: ['unlimitedStorage', 'notifications'],
+      background: { service_worker: 'background.js' },
+    }
+    writeFileSync(manifestPath, JSON.stringify(chromeManifest))
+    const patch = () => spawnSync(process.execPath, ['scripts/patch-firefox-manifest.js'], {
+      cwd: repoRoot,
+      encoding: 'utf8',
+      env: { ...process.env, BUILD_DIR: tempDir },
+    })
+    try {
+      const first = patch()
+      expect(first.status, first.stderr).toBe(0)
+      const firefoxManifest = JSON.parse(readFileSync(manifestPath, 'utf8'))
+      expect(firefoxManifest.permissions).toEqual([...chromeManifest.permissions, 'unlimitedStorage'])
+      expect(firefoxManifest.optional_permissions).toEqual(['notifications'])
+      expect(firefoxManifest.background.scripts).toEqual(['background.js'])
+      expect(chromeManifest.optional_permissions).toContain('unlimitedStorage')
+      expect(chromeManifest.permissions).not.toContain('unlimitedStorage')
+
+      const second = patch()
+      expect(second.status, second.stderr).toBe(0)
+      expect(JSON.parse(readFileSync(manifestPath, 'utf8'))).toEqual(firefoxManifest)
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true })
+    }
   })
 
   it('disables Plasmo version checks during deterministic release builds', () => {

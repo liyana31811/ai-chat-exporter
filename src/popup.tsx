@@ -22,6 +22,7 @@ import { ExportOptionsPanel } from './components/ExportOptionsPanel'
 import { InfoTooltip } from './components/InfoTooltip'
 import { PageSnapshotPanel } from './components/PageSnapshotPanel'
 import { requestPageSnapshotFromTab } from './lib/page-snapshot-capture'
+import { requestPageSnapshotPreview } from './lib/page-snapshot-cache'
 import { downloadPageSnapshot } from './lib/snapshot-download'
 import { SettingsIcon, SunIcon, MoonIcon, GithubChip } from './components/icons'
 import { conversationToMarkdown } from './lib/export-markdown'
@@ -128,6 +129,7 @@ export default function Popup() {
   const [currentReadError, setCurrentReadError] = useState<string | null>(null)
   const [noCurrentConversation, setNoCurrentConversation] = useState(false)
   const [success, setSuccess] = useState<string | null>(null)
+  const [snapshotNoticeMessage, setSnapshotNoticeMessage] = useState<string | null>(null)
   const [settings, setSettings] = useState<ExtensionSettings | null>(null)
   const pendingSettingsRef = useRef<Partial<ExtensionSettings>>({})
   const [settingsDirty, setSettingsDirty] = useState(false)
@@ -385,15 +387,25 @@ export default function Popup() {
       setStoppingExport(false)
       setError(null)
       setSuccess(null)
+      setSnapshotNoticeMessage(null)
       const snapshotController = new AbortController()
       activeExportControllerRef.current = snapshotController
+      const detectionSequence = detectionSequenceRef.current
+      const isCurrent = () => detectionSequenceRef.current === detectionSequence && !snapshotController.signal.aborted
       try {
-        const snapshot = await requestPageSnapshotFromTab(sourceTabId)
-        if (!snapshot) return
+        const snapshot = await requestPageSnapshotFromTab(sourceTabId, undefined, isCurrent)
+        if (!snapshot || !isCurrent()) return
+        if (format === 'pdf') {
+          await requestPageSnapshotPreview(snapshot, settings ?? undefined)
+          if (!isCurrent()) return
+          await chrome.tabs.create({ url: chrome.runtime.getURL('tabs/preview.html') + `?snapshot=${encodeURIComponent(snapshot.captureId)}&format=pdf` })
+          setSnapshotNoticeMessage(T('PDF export does not start automatically. Choose Download PDF below when you are ready.'))
+          return
+        }
         const filename = await downloadPageSnapshot(snapshot, format, settings ?? undefined, { signal: snapshotController.signal })
         setSuccess(T('This chat could not be verified as complete, so a page snapshot was saved instead: {0}. It contains what the page has loaded.', filename))
       } catch (err) {
-        if (isExportCancelledError(err)) setSuccess(T('Download cancelled. Nothing was saved.'))
+        if (isExportCancelledError(err)) setSnapshotNoticeMessage(T('Download cancelled. Nothing was saved.'))
         else setError(`${conversationIntegrityError(integrity)} ${T('A page snapshot could not be saved either: {0}', err instanceof Error ? T(err.message) : T('Export failed'))}`)
       } finally {
         if (activeExportControllerRef.current === snapshotController) activeExportControllerRef.current = null
@@ -978,6 +990,7 @@ export default function Popup() {
                 {snapshotFallback && (
                   <p className="text-xs text-muted">{T('You can still save what this page shows with “Capture page snapshot” below.')}</p>
                 )}
+                {snapshotNoticeMessage && <div className="message" role="status">{snapshotNoticeMessage}</div>}
                 {success && <div className="message success" role="alert">{success}</div>}
 
                 <div className="mt-1">

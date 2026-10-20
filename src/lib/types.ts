@@ -379,6 +379,8 @@ export interface ExtensionSettings {
    * deletes them.
    */
   recoveryRetentionDays: number
+  /** Remove recovery byte caps only with user opt-in and a verified storage grant. */
+  recoveryExpandedStorage: boolean
 }
 
 /** Retention choices offered for local recovery drafts (0 = until deleted). */
@@ -417,7 +419,8 @@ export const DEFAULT_SETTINGS: ExtensionSettings = {
   pdfTextLayer: true,
   assistantDisplayName: '',
   showMessageTimestamps: true,
-  recoveryRetentionDays: 7
+  recoveryRetentionDays: 7,
+  recoveryExpandedStorage: false
 }
 
 /**
@@ -427,7 +430,11 @@ export const DEFAULT_SETTINGS: ExtensionSettings = {
 export function mergeExtensionSettings(
   settings?: Partial<ExtensionSettings>
 ): ExtensionSettings {
-  return { ...DEFAULT_SETTINGS, ...(settings || {}) }
+  return {
+    ...DEFAULT_SETTINGS, ...(settings || {}),
+    recoveryRetentionDays: normalizeRecoveryRetentionDays(settings?.recoveryRetentionDays),
+    recoveryExpandedStorage: settings?.recoveryExpandedStorage === true,
+  }
 }
 
 /** Supported platforms for scheduled export */

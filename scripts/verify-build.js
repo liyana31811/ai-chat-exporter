@@ -97,6 +97,13 @@ function verifyIcons() {
 
 assert(manifest.version === pkg.version, 'Built version does not match package.json')
 assert(!manifest.permissions?.includes('tabs'), 'The broad tabs permission must not return')
+if (target === 'firefox') {
+  assert(manifest.permissions?.includes('unlimitedStorage'), 'Firefox expanded storage permission is missing')
+  assert(!manifest.optional_permissions?.includes('unlimitedStorage'), 'Firefox cannot request unlimitedStorage optionally')
+} else {
+  assert(!manifest.permissions?.includes('unlimitedStorage'), 'Chrome/Edge storage permission must remain optional')
+  assert(manifest.optional_permissions?.includes('unlimitedStorage'), 'Optional expanded storage permission is missing')
+}
 const contentScriptMatches = (manifest.content_scripts || []).flatMap(script => script.matches || [])
 assert(contentScriptMatches.includes('https://chatgpt.com/*'), 'ChatGPT content script match is missing')
 assert(contentScriptMatches.includes('https://chat.openai.com/*'), 'Legacy ChatGPT content script match is missing')

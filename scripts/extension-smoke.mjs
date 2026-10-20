@@ -532,6 +532,15 @@ async function main() {
     await assertVisibleText(recoveryPage, 'Synthetic recovery draft', 'recovery list')
     await recoveryPage.getByRole('button', { name: 'Synthetic recovery draft', exact: true }).click()
     await assertVisibleText(recoveryPage, 'Open fixed snapshot preview', 'recovery exact draft selection')
+    await recoveryPage.getByLabel('Keep drafts for').selectOption('0')
+    const retention = await options.evaluate(async () => (await chrome.storage.local.get('settings')).settings.recoveryRetentionDays)
+    if (retention !== 0) fail('Recovery keep-until-deleted setting did not persist')
+    const directRecoveryDownload = recoveryPage.waitForEvent('download', { timeout: 15000 })
+    await recoveryPage.getByRole('button', { name: 'Save Markdown directly', exact: true }).click()
+    const directDraft = await directRecoveryDownload
+    const directDraftPath = await directDraft.path()
+    if (!directDraftPath || await directDraft.failure() || !readFileSync(directDraftPath, 'utf8').includes('Synthetic recovery checkpoint text')) fail('Direct recovery Markdown download lost saved content')
+    await assertVisibleText(recoveryPage, 'Markdown saved.', 'direct recovery download acknowledgement')
     const recoveredPreviewEvent = context.waitForEvent('page')
     await recoveryPage.getByRole('button', { name: 'Open fixed snapshot preview (copy / Markdown / PDF)', exact: true }).click()
     const recoveredPreview = await recoveredPreviewEvent

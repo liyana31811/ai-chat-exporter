@@ -17,6 +17,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ExtensionSettings, PageSnapshot } from '../lib/types'
 import { DEFAULT_SETTINGS, RECOVERY_RETENTION_DAY_OPTIONS, mergeExtensionSettings, normalizeRecoveryRetentionDays } from '../lib/types'
 import { requestSettingsPatch } from '../lib/settings-store'
+import { downloadPageSnapshot } from '../lib/snapshot-download'
 import { isPageSnapshot, snapshotNotice } from '../lib/page-snapshot'
 import { requestPageSnapshotPreview } from '../lib/page-snapshot-cache'
 import type { RecoveryDraftSummary } from '../lib/recovery-drafts'
@@ -48,6 +49,8 @@ export default function Recovery() {
   const [busy, setBusy] = useState(false)
   const [confirm, setConfirm] = useState<string | 'all' | null>(null)
   const [loading, setLoading] = useState(true)
+  const [storageGranted, setStorageGranted] = useState(false)
+  const [saved, setSaved] = useState('')
 
   // Monotonic guards: only the latest list/select request may commit state.
   const listSequenceRef = useRef(0)
@@ -77,6 +80,51 @@ export default function Recovery() {
   }, [T])
 
   useEffect(() => { void loadSettings(); void refresh() }, [loadSettings, refresh])
+
+  useEffect(() => {
+    const check = () => {
+      void chrome.permissions?.contains({ permissions: ['unlimitedStorage'] })
+        .then(setStorageGranted).catch(() => setStorageGranted(false))
+    }
+    // Older @types/chrome omits removeListener on permission events.
+    const added = chrome.permissions?.onAdded as chrome.events.Event<() => void> | undefined
+    const removed = chrome.permissions?.onRemoved as chrome.events.Event<() => void> | undefined
+    check()
+    added?.addListener(check)
+    removed?.addListener(check)
+    return () => {
+      added?.removeListener(check)
+      removed?.removeListener(check)
+    }
+  }, [])
+
+  // Request directly from the click gesture, before any other async operation.
+  const changeStorage = async () => {
+    if (busy) return
+    setBusy(true); setError('')
+    try {
+      const enable = !(settings.recoveryExpandedStorage && storageGranted)
+      if (enable) {
+        const permission = { permissions: ['unlimitedStorage'] }
+        const granted = storageGranted || await chrome.permissions.request(permission)
+        setStorageGranted(granted)
+        if (!granted) throw new Error('Storage permission was not granted. Existing drafts were retained.')
+      }
+      setSettings(await requestSettingsPatch({ recoveryExpandedStorage: enable }))
+    } catch (err) {
+      setError(T(err instanceof Error ? err.message : 'Storage setting could not be saved. Please retry.'))
+    } finally { setBusy(false) }
+  }
+
+  const download = async () => {
+    if (!selected || busy) return
+    setBusy(true); setError(''); setSaved('')
+    try {
+      await downloadPageSnapshot(selected, 'markdown', settings)
+      setSaved(T('Markdown saved.'))
+    } catch { setError(T('Download failed or was cancelled. Please retry.')) }
+    finally { setBusy(false) }
+  }
 
   // Re-read on relevant storage changes only. Reads never write recovery
   // storage, and the sequence guard drops stale completions — no busy loop.
@@ -168,7 +216,13 @@ export default function Recovery() {
         <h1>{T('Local recovery drafts')}</h1>
         <p>{T('Saved checkpoints contain only observed page content, not complete verified history. They cannot restore a conversation to its provider.')}</p>
         <p>{T('Stopping protection does not delete saved drafts. Deleting a draft also stops that draft\'s protection, and protection does not resume by itself.')}</p>
-        <p className="recovery-retention">{T('Drafts stay only in this browser and are limited to 4 MiB in total.')}</p>
+        <p className="recovery-retention">{T(settings.recoveryExpandedStorage && storageGranted
+          ? 'Expanded storage is on: no fixed draft byte limit. Browser and disk limits still apply; at most 20 drafts.'
+          : 'Default storage: 1 MiB per draft, 4 MiB total, at most 20 drafts. Existing drafts are not evicted to make room.')}</p>
+        <button type="button" className="btn btn-outline btn-compact" disabled={busy} onClick={() => void changeStorage()}>
+          {T(settings.recoveryExpandedStorage && storageGranted ? 'Use default storage limits' : 'Enable expanded local storage')}
+        </button>
+        <p>{T('Expanded storage needs browser permission. It does not upload or sync drafts. Returning to default limits keeps existing drafts but may pause new saves.')}</p>
         <label className="recovery-retention">
           {T('Keep drafts for')}{' '}
           <select
@@ -186,6 +240,7 @@ export default function Recovery() {
         </button>
       </header>
       {error && <p role="alert" className="recovery-error">{error}</p>}
+      {saved && <p role="status">{saved}</p>}
       {loading ? <p>{T('Loading recovery drafts…')}</p> : drafts.length === 0 ? <p>{T('No recovery drafts available.')}</p> : (
         <>
           <ul className="recovery-list">
@@ -218,6 +273,10 @@ export default function Recovery() {
           <h2>{selected.conversation.title || T('Untitled conversation')}</h2>
           <p>{snapshotNotice(selected, locale)}</p>
           <p>{t('{0} messages', locale, selected.conversation.messages.length)}{` · ${selected.conversation.platform}`}</p>
+          <button type="button" className="btn btn-outline btn-compact" disabled={busy} onClick={() => void download()}>
+            {T('Save Markdown directly')}
+          </button>
+          <p>{T('Direct Markdown saving does not use the 1 MiB temporary preview cache.')}</p>
           <button type="button" className="btn btn-outline btn-compact" disabled={busy} onClick={() => void preview()}>
             {T('Open fixed snapshot preview (copy / Markdown / PDF)')}
           </button>

@@ -12,14 +12,14 @@ const DAY_MS = 24 * 60 * 60 * 1000
 /**
  * Retention chosen in settings, in milliseconds after the last save. Returns
  * null when drafts are kept until deleted. Falls back to the 7-day default
- * when settings cannot be read.
+ * when no valid setting is stored. Read failures return null to prevent expiry.
  */
 export async function recoveryRetentionMs(): Promise<number | null> {
   let days = 7
   try {
     const stored = (await chrome.storage.local.get('settings'))?.settings as { recoveryRetentionDays?: unknown } | undefined
     days = normalizeRecoveryRetentionDays(stored?.recoveryRetentionDays)
-  } catch { /* keep the default */ }
+  } catch { return null /* Unknown retention must never trigger destructive expiry. */ }
   return days === 0 ? null : days * DAY_MS
 }
 const INDEX_KEY = 'recoveryDraftIndexV1'
@@ -138,24 +138,26 @@ async function save(sessionKey: string, snapshot: PageSnapshot, initial: boolean
     capturedAt: snapshot.capturedAt, lastSavedAt: now, state: 'protected', token: initial ? crypto.randomUUID() : token,
     messageCount: snapshot.conversation.messages.length, slot, size: bytes(snapshot), fingerprint }
   function pause(reason: string): RecoveryStatus { return status(sessionKey, previous ? { ...previous, state: 'paused', token: undefined, error: reason } : { ...next, state: 'paused', token: undefined, error: reason }) }
-  if (next.size > RECOVERY_DRAFT_MAX_BYTES) {
+  let expanded = false
+  try {
+    const stored = (await chrome.storage.local.get('settings')).settings
+    expanded = stored?.recoveryExpandedStorage === true &&
+      (await chrome.permissions.contains({ permissions: ['unlimitedStorage'] })) === true
+  } catch { /* Missing or revoked permission keeps the default byte limits. */ }
+  if (!expanded && next.size > RECOVERY_DRAFT_MAX_BYTES) {
     if (previous) { previous.state = 'paused'; previous.token = undefined; previous.error = FAILURE; await publishPause(value) }
     return pause(FAILURE)
   }
   prune(value, now, await recoveryRetentionMs())
   if (value.cleanupSlots.length || value.pendingSlots.length) { await publish(value); await drain(value) }
   previous = value.entries.find(e => e.sessionKey === sessionKey)
-  const removable = value.entries.filter(e => e.id !== id && e.state !== 'protected').sort((a, b) => a.lastSavedAt - b.lastSavedAt)
   const projected = () => Math.max(
     bytes({ ...value, pendingSlots: [...value.pendingSlots, { slot, size: next.size }] }),
     bytes({ ...value, entries: value.entries.filter(e => e.id !== id).concat(next), pendingSlots: [...value.pendingSlots, ...(previous ? [{ slot: previous.slot, size: previous.size }] : [])] })
   ) + value.entries.filter(e => e.id !== id).reduce((sum, e) => sum + e.size, 0) + next.size + (previous?.size || 0) + value.pendingSlots.reduce((sum, e) => sum + e.size, 0)
-  while ((value.entries.filter(e => e.id !== id).length >= RECOVERY_MAX_DRAFTS || projected() > RECOVERY_TOTAL_MAX_BYTES) && removable.length) {
-    discard(value, removable.shift()!)
-    await publish(value)
-    await drain(value)
-  }
-  if (value.entries.filter(e => e.id !== id).length >= RECOVERY_MAX_DRAFTS || projected() > RECOVERY_TOTAL_MAX_BYTES) {
+  // Quota pressure must not delete stopped/paused drafts, especially when the
+  // user chose “until deleted”. Only explicit deletion or retention expires them.
+  if (value.entries.filter(e => e.id !== id).length >= RECOVERY_MAX_DRAFTS || (!expanded && projected() > RECOVERY_TOTAL_MAX_BYTES)) {
     if (previous) { previous.state = 'paused'; previous.token = undefined; previous.error = FAILURE; await publishPause(value) }
     return pause(FAILURE)
   }

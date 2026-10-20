@@ -66,6 +66,7 @@
       "downloads",
       "alarms"
     ],
+    "optional_permissions": ["unlimitedStorage"],
     "host_permissions": [
       "https://chatgpt.com/*",
       "https://chat.openai.com/*",

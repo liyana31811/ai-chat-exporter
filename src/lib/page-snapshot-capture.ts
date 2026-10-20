@@ -39,6 +39,9 @@ export async function requestPageSnapshotFromTab(
   // A navigation during capture voids the result. The URL is a consistency
   // check only; identity comes from the echoed request id.
   const after = await chrome.tabs.get(tabId).catch(() => null)
+  // A reload/navigation can supersede capture during the final asynchronous
+  // tab check too, including a same-URL reload invisible to URL comparison.
+  if (!isCurrent()) return null
   if (!after?.url || after.url !== startUrl) throw new Error(PAGE_CHANGED)
   if (!isPageSnapshot(response?.data)) throw new Error(CAPTURE_NOT_RECOGNIZED)
   return response.data

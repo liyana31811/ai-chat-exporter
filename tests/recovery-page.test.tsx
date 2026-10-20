@@ -2,9 +2,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { buildPageSnapshot } from '../src/lib/page-snapshot'
+import { DEFAULT_SETTINGS } from '../src/lib/types'
 import Recovery from '../src/tabs/recovery'
 const cache = vi.fn()
+const download = vi.fn()
+const permissionContains = vi.fn()
+const permissionRequest = vi.fn()
+let storedSettings = { ...DEFAULT_SETTINGS }
 vi.mock('../src/lib/page-snapshot-cache', () => ({ requestPageSnapshotPreview: (...args: unknown[]) => cache(...args) }))
+vi.mock('../src/lib/snapshot-download', () => ({ downloadPageSnapshot: (...args: unknown[]) => download(...args) }))
 const snapshot = buildPageSnapshot({ id: 'local-1', title: 'Saved draft', url: '', platform: 'gemini', messages: [{ id: 'a', role: 'user', content: 'Draft content' }] }, 'unknown', 1760000000000, 'draft-capture')
 const otherSnapshot = buildPageSnapshot({ id: 'local-2', title: 'Other draft', url: '', platform: 'gemini', messages: [{ id: 'b', role: 'user', content: 'Other content' }] }, 'unknown', 1760000000000, 'other-capture')
 const send = vi.fn()
@@ -17,19 +23,25 @@ beforeEach(() => {
   vi.clearAllMocks()
   document.body.innerHTML = ''
   storageListeners = []
-  send.mockImplementation(async ({ type }: { type: string }) => ({
+  storedSettings = { ...DEFAULT_SETTINGS, locale: 'en', theme: 'light' }
+  permissionContains.mockResolvedValue(false)
+  permissionRequest.mockResolvedValue(true)
+  download.mockResolvedValue(undefined)
+  send.mockImplementation(async ({ type, data }: { type: string; data?: Partial<typeof storedSettings> }) => ({
     data: type === 'LIST_RECOVERY_DRAFTS' ? summaries
       : type === 'GET_RECOVERY_DRAFT' ? snapshot
       : type === 'STOP_RECOVERY_DRAFT' ? { sessionKey: 'gemini:7:aaa', state: 'off' }
       : type === 'DELETE_RECOVERY_DRAFT' || type === 'CLEAR_RECOVERY_DRAFTS' ? true
+      : type === 'PATCH_SETTINGS' ? (storedSettings = { ...storedSettings, ...data })
       : undefined,
   }))
   Object.defineProperty(globalThis, 'chrome', {
     configurable: true,
     value: {
       runtime: { sendMessage: send, getURL: (path: string) => `chrome-extension://test/${path}` },
+      permissions: { contains: permissionContains, request: permissionRequest },
       storage: {
-        local: { get: vi.fn().mockResolvedValue({ settings: { locale: 'en', theme: 'light' } }) },
+        local: { get: vi.fn(async () => structuredClone({ settings: storedSettings })) },
         onChanged: {
           addListener: (fn: (...args: unknown[]) => void) => { storageListeners.push(fn) },
           removeListener: (fn: (...args: unknown[]) => void) => { storageListeners = storageListeners.filter(item => item !== fn) },
@@ -40,6 +52,74 @@ beforeEach(() => {
   cache.mockResolvedValue(undefined)
 })
 describe('recovery page', () => {
+  it('renders default limits when the optional permissions API is unavailable', async () => {
+    delete (chrome as unknown as { permissions?: unknown }).permissions
+    render(<Recovery />)
+    expect(await screen.findByRole('button', { name: 'Saved draft' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Enable expanded local storage' })).toBeTruthy()
+    expect(screen.getByText(/Default storage: 1 MiB per draft, 4 MiB total/)).toBeTruthy()
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
+
+  it('requests expanded permission directly from the click before persisting opt-in', async () => {
+    let grant: ((value: boolean) => void) | undefined
+    permissionRequest.mockImplementation(() => new Promise<boolean>(resolve => { grant = resolve }))
+    render(<Recovery />)
+    const button = await screen.findByRole('button', { name: 'Enable expanded local storage' })
+    fireEvent.click(button)
+    // No await before the browser permission request: it stays in the gesture.
+    expect(permissionRequest).toHaveBeenCalledWith({ permissions: ['unlimitedStorage'] })
+    expect(send.mock.calls.some(([message]) => message.type === 'PATCH_SETTINGS')).toBe(false)
+    grant!(true)
+    await waitFor(() => expect(send).toHaveBeenCalledWith({ type: 'PATCH_SETTINGS', data: { recoveryExpandedStorage: true } }))
+    expect(await screen.findByRole('button', { name: 'Use default storage limits' })).toBeTruthy()
+    expect(screen.getByText(/Expanded storage is on: no fixed draft byte limit/)).toBeTruthy()
+    expect(storedSettings.recoveryExpandedStorage).toBe(true)
+  })
+
+  it('reports denied permission without changing settings or drafts', async () => {
+    permissionRequest.mockResolvedValue(false)
+    render(<Recovery />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Enable expanded local storage' }))
+    expect((await screen.findByRole('alert')).textContent).toContain('Storage permission was not granted. Existing drafts were retained.')
+    expect(send.mock.calls.some(([message]) => message.type === 'PATCH_SETTINGS')).toBe(false)
+    expect(storedSettings.recoveryExpandedStorage).toBe(false)
+    expect(screen.getByRole('button', { name: 'Enable expanded local storage' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Saved draft' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Other draft' })).toBeTruthy()
+  })
+
+  it('returns to default limits by patching settings without requesting permission or deleting drafts', async () => {
+    storedSettings.recoveryExpandedStorage = true
+    permissionContains.mockResolvedValue(true)
+    render(<Recovery />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Use default storage limits' }))
+    await waitFor(() => expect(send).toHaveBeenCalledWith({ type: 'PATCH_SETTINGS', data: { recoveryExpandedStorage: false } }))
+    expect(await screen.findByRole('button', { name: 'Enable expanded local storage' })).toBeTruthy()
+    expect(screen.getByText(/Default storage: 1 MiB per draft, 4 MiB total/)).toBeTruthy()
+    expect(permissionRequest).not.toHaveBeenCalled()
+    expect(storedSettings.recoveryExpandedStorage).toBe(false)
+    expect(send.mock.calls.some(([message]) => ['DELETE_RECOVERY_DRAFT', 'CLEAR_RECOVERY_DRAFTS'].includes(message.type))).toBe(false)
+    expect(screen.getByRole('button', { name: 'Saved draft' })).toBeTruthy()
+  })
+
+  it('saves a draft larger than 1 MiB as Markdown without using the preview cache', async () => {
+    const large = buildPageSnapshot({ ...snapshot.conversation, messages: [{ id: 'large', role: 'user', content: 'x'.repeat(1_100_000) }] }, 'unknown')
+    const originalSend = send.getMockImplementation()!
+    send.mockImplementation((message: { type: string }) => message.type === 'GET_RECOVERY_DRAFT'
+      ? Promise.resolve({ data: large }) : originalSend(message))
+    const open = vi.spyOn(window, 'open').mockImplementation(() => null)
+    try {
+      render(<Recovery />)
+      fireEvent.click(await screen.findByRole('button', { name: 'Saved draft' }))
+      fireEvent.click(await screen.findByRole('button', { name: 'Save Markdown directly' }))
+      await waitFor(() => expect(download).toHaveBeenCalledWith(large, 'markdown', expect.objectContaining({ locale: 'en' })))
+      expect(await screen.findByRole('status')).toHaveProperty('textContent', 'Markdown saved.')
+      expect(cache).not.toHaveBeenCalled()
+      expect(open).not.toHaveBeenCalled()
+    } finally { open.mockRestore() }
+  })
+
   it('lists drafts without a tab and retrieves only the chosen ID', async () => {
     render(<Recovery />)
     fireEvent.click(await screen.findByRole('button', { name: 'Saved draft' }))
