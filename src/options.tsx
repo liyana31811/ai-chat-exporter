@@ -45,6 +45,7 @@ import { sanitizeDownloadFolderName } from './lib/download-path'
 import { t, localeTag, type Locale } from './lib/i18n'
 import { useFullPageScroll } from './lib/use-full-page-scroll'
 import { useThemeSync } from './lib/use-theme-sync'
+import { useLocaleSync } from './lib/use-locale-sync'
 
 /** App version pulled from the extension manifest (single source of truth) */
 const APP_VERSION = chrome.runtime.getManifest()?.version ?? '1.2.0'
@@ -178,6 +179,7 @@ export default function Options() {
 
   // Synchronize HTML data-theme attribute with theme setting
   useThemeSync(settings.theme)
+  useLocaleSync(locale)
 
   // Poll status and the per-platform checkpoints periodically. The next run
   // is derived locally from the same schedule rules as the worker, so it does

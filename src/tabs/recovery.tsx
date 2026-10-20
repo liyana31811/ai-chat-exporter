@@ -23,6 +23,7 @@ import type { RecoveryDraftSummary } from '../lib/recovery-drafts'
 import { t, localeTag, type Locale } from '../lib/i18n'
 import { useFullPageScroll } from '../lib/use-full-page-scroll'
 import { useThemeSync } from '../lib/use-theme-sync'
+import { useLocaleSync } from '../lib/use-locale-sync'
 import '../styles/popup.css'
 import '../styles/recovery.css'
 
@@ -39,6 +40,7 @@ export default function Recovery() {
   const locale: Locale = settings.locale
   const T = useCallback((key: string, ...args: Array<string | number>) => t(key, locale, ...args), [locale])
   useThemeSync(settings.theme)
+  useLocaleSync(locale)
 
   const [drafts, setDrafts] = useState<RecoveryDraftSummary[]>([])
   const [selected, setSelected] = useState<PageSnapshot | null>(null)

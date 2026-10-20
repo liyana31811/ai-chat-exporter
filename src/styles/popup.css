@@ -7,6 +7,8 @@
  * WCAG AA text contrast; visible focus rings; prefers-reduced-motion honored.
  */
 
+@import '../../typography.css';
+
 :root {
   /* Paper & ink */
   --bg-primary: #F7F5F0;        /* warm paper */
@@ -56,9 +58,6 @@
   --surface-stroke-strong: rgba(22, 33, 30, 0.14);
   --surface-highlight: rgba(255, 255, 255, 0.55);
 
-  --font-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "PingFang TC", "Hiragino Sans", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
-  --font-display: var(--font-stack);
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   --transition: all 160ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 

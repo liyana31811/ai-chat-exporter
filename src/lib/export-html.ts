@@ -755,7 +755,7 @@ function getPrintStyles(_pdfStyle: PdfStyle = 'minimal'): string {
     }
 
     .pdf-document-root {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'PingFang TC', 'Hiragino Sans', 'Noto Sans CJK SC', 'Microsoft YaHei', sans-serif;
+      font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, 'Times New Roman', 'Songti SC', 'Songti TC', 'Hiragino Mincho ProN', 'Yu Mincho', 'Noto Serif CJK SC', 'Noto Serif CJK JP', 'Noto Serif CJK KR', Batang, 'AppleMyungjo', serif;
       font-size: 11pt;
       line-height: 1.75;
       color: #202124;

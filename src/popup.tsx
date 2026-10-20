@@ -47,6 +47,7 @@ import { analyzeConversationIntegrity, conversationIntegrityError, isConversatio
 import { t, type Locale } from './lib/i18n'
 import { mergeExtensionSettings } from './lib/types'
 import { useThemeSync } from './lib/use-theme-sync'
+import { useLocaleSync } from './lib/use-locale-sync'
 import type { 
   Conversation, ExportFormat, ExtensionSettings, ConversationListItem, 
   BulkExportProgress
@@ -221,6 +222,7 @@ export default function Popup() {
     setExportedConversationIds(previous => [...new Set([...previous, ...completed])])
   }, [manualJob, platform])
   useThemeSync(settings?.theme)
+  useLocaleSync(locale)
 
   const loadSettings = async () => {
     try {

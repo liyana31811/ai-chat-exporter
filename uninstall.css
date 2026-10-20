@@ -1,4 +1,4 @@
-:root { color-scheme: light dark; --paper: #f7f5f0; --ink: #16211e; --muted: #52615b; --rule: #d9ddd5; --accent: #135e73; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "PingFang TC", "Hiragino Sans", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif; }
+:root { color-scheme: light dark; --paper: #f7f5f0; --ink: #16211e; --muted: #52615b; --rule: #d9ddd5; --accent: #135e73; font-family: var(--font-stack); }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--paper); color: var(--ink); font-size: 16px; line-height: 1.6; }
 main { max-width: 640px; margin: 48px auto; padding: 0 24px; }

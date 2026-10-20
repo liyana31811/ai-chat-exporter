@@ -45,7 +45,13 @@ describe('optional uninstall feedback', () => {
 
   it('uses one UI font for titles, body and controls, leaving code separate', () => {
     const css = readFileSync(resolve(root, 'src/styles/popup.css'), 'utf8')
-    expect(css).toContain('--font-display: var(--font-stack)')
+    expect(css).toContain("@import '../../typography.css'")
+    const typography = readFileSync(resolve(root, 'typography.css'), 'utf8')
+    expect(typography).toContain('--font-display: var(--font-stack)')
+    expect(typography).toContain('"Iowan Old Style"')
+    expect(typography).toContain('"Songti SC"')
+    expect(typography).toContain('"Hiragino Mincho ProN"')
+    expect(typography).toContain('"AppleMyungjo"')
     expect(css).toContain('button, input, select, textarea { font-family: inherit; }')
     expect(css).not.toContain('font-family: var(--font-mono)')
     expect(readFileSync(resolve(root, 'src/styles/options.css'), 'utf8')).not.toContain('font-family: var(--font-mono)')

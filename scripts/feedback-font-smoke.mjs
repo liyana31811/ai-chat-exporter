@@ -13,16 +13,17 @@ try {
   const worker = context.serviceWorkers()[0] || await context.waitForEvent('serviceworker')
   const id = new URL(worker.url()).host
   const pages = ['popup.html', 'options.html', 'tabs/preview.html', 'tabs/recovery.html', 'tabs/export-workspace.html']
-  for (const locale of ['en', 'zh-CN']) {
-    await worker.evaluate(async locale => { const all = await chrome.storage.local.get(null); const key = Object.keys(all).find(k => all[k] && typeof all[k] === 'object' && 'locale' in all[k]) || 'settings'; await chrome.storage.local.set({ [key]: { ...(all[key] || {}), locale } }) }, locale)
+  for (const locale of ['en', 'zh-CN', 'zh-TW', 'de', 'ja', 'ko']) {
+    await worker.evaluate(async locale => { const all = await chrome.storage.local.get(null); const key = Object.keys(all).find(k => all[k] && typeof all[k] === 'object' && 'locale' in all[k]) || 'settings'; await chrome.storage.local.set({ [key]: { ...(all[key] || {}), locale }, 'conversation-font-check': { id: 'font-check', title: 'Typography / 字体 / 書体 / 글꼴', platform: 'claude', url: 'https://example.com', sourceCompleteness: 'verified', messages: [{ id: 'u', role: 'user', content: 'Text / 正文 / 本文 / 본문' }, { id: 'a', role: 'assistant', content: '```python\n    print(1)\n```' }] } }) }, locale)
     for (const route of pages) {
       const page = await context.newPage()
       await page.setViewportSize({ width: 390, height: 844 })
-      await page.goto(`chrome-extension://${id}/${route}`)
+      await page.goto(`chrome-extension://${id}/${route}${route === 'tabs/preview.html' ? '?id=font-check' : ''}`)
       await page.locator('#__plasmo > *').first().waitFor()
       if (route === 'options.html') {
         await page.locator('select').filter({ has: page.locator('option[value="zh-CN"]') }).selectOption(locale)
       }
+      await page.waitForFunction(locale => document.documentElement.lang === locale, locale)
       await page.evaluate(() => document.fonts.ready)
       const fonts = await page.evaluate(() => {
         const body = getComputedStyle(document.body).fontFamily
@@ -30,7 +31,14 @@ try {
         return { body, differences, overflow: document.documentElement.scrollWidth > innerWidth }
       })
       assert.deepEqual(fonts.differences, [], `${locale} ${route} UI font mismatch`)
+      assert.ok(fonts.body.includes('Iowan Old Style') && fonts.body.endsWith('serif'), 'Expected the confirmed serif typography')
+      const regional = { 'zh-CN': 'Songti SC', 'zh-TW': 'Songti TC', ja: 'Hiragino Mincho ProN', ko: 'AppleMyungjo' }[locale]
+      if (regional) assert.ok(fonts.body.includes(regional), `${locale} regional serif fallback missing`)
       assert.equal(fonts.overflow, false, `${route} overflow`)
+      if (route === 'tabs/preview.html') {
+        const codeFont = await page.locator('pre code').first().evaluate(el => getComputedStyle(el).fontFamily)
+        assert.ok(/mono|menlo/i.test(codeFont), 'Code must retain its monospace font')
+      }
       if (route === 'options.html') {
         const layout = await page.evaluate(() => ({
           toggles: [...document.querySelectorAll('.toggle')].map(el => el.getBoundingClientRect().width),
@@ -49,7 +57,7 @@ try {
   // Serve the exact checked-in static files by interception, not a replacement server.
   await page.route('https://feedback.test/**', async route => {
     const file = new URL(route.request().url()).pathname.slice(1) || 'uninstall.html'
-    assert.ok(['uninstall.html', 'uninstall.css', 'uninstall.js'].includes(file))
+    assert.ok(['uninstall.html', 'uninstall.css', 'uninstall.js', 'typography.css'].includes(file))
     await route.fulfill({ body: await readFile(path.join(root, file)), contentType: file.endsWith('.css') ? 'text/css' : file.endsWith('.js') ? 'text/javascript' : 'text/html' })
   })
   for (const language of ['en', 'zh']) {

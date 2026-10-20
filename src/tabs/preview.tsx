@@ -20,6 +20,7 @@ import { analyzeConversationIntegrity, conversationIntegrityError, isConversatio
 import { t, type Locale } from '../lib/i18n'
 import { useFullPageScroll } from '../lib/use-full-page-scroll'
 import { useThemeSync } from '../lib/use-theme-sync'
+import { useLocaleSync } from '../lib/use-locale-sync'
 import { DownloadIcon, SunIcon, MoonIcon } from '../components/icons'
 import type { PageSnapshot } from '../lib/types'
 import { isPageSnapshot, snapshotNotice, prepareSnapshotForOutput, buildSnapshotExportOptions } from '../lib/page-snapshot'
@@ -170,6 +171,7 @@ export default function Preview() {
   const [integrityWarning, setIntegrityWarning] = useState<string | null>(null)
 
   useThemeSync(theme)
+  useLocaleSync(locale)
 
   const T = (key: string) => t(key, locale)
 
