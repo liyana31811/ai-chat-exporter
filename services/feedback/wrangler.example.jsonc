@@ -1,0 +1,16 @@
+{
+  "name": "ai-chat-exporter-feedback",
+  "main": "worker.mjs",
+  "compatibility_date": "2026-10-01",
+  "workers_dev": true,
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "feedback",
+      // Add database_id only to your private deployment configuration.
+      "migrations_dir": "."
+    }
+  ],
+  "triggers": { "crons": ["17 3 * * *"] }
+  // Configure FEEDBACK_SECRET and ADMIN_PASSWORD with `wrangler secret put`.
+}

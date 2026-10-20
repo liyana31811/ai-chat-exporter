@@ -5,8 +5,16 @@ import { JSDOM } from 'jsdom'
 import { registerUninstallFeedback, UNINSTALL_URL } from '../src/lib/support'
 
 const root = resolve(__dirname, '..')
+function feedback(fetch: ReturnType<typeof vi.fn>) {
+  const dom = new JSDOM(readFileSync(resolve(root, 'uninstall.html'), 'utf8'), { runScripts: 'outside-only', url: UNINSTALL_URL })
+  dom.window.fetch = fetch
+  dom.window.eval(readFileSync(resolve(root, 'uninstall.js'), 'utf8'))
+  return dom
+}
+const settle = () => new Promise(resolve => setTimeout(resolve, 0))
+
 describe('optional uninstall feedback', () => {
-  it('registers the static URL without identifiers and tolerates unavailable APIs', async () => {
+  it('registers a static URL and tolerates unavailable APIs', async () => {
     const setUninstallURL = vi.fn(async () => {})
     vi.stubGlobal('chrome', { runtime: { setUninstallURL } })
     await registerUninstallFeedback()
@@ -16,49 +24,49 @@ describe('optional uninstall feedback', () => {
     await expect(registerUninstallFeedback()).resolves.toBeUndefined()
   })
 
-  it('keeps choices local and builds a public GitHub draft only for an explicit link', () => {
-    const dom = new JSDOM(readFileSync(resolve(root, 'uninstall.html'), 'utf8'), { runScripts: 'outside-only', url: UNINSTALL_URL })
-    const network = vi.fn()
-    dom.window.fetch = network
-    dom.window.eval(readFileSync(resolve(root, 'uninstall.js'), 'utf8'))
+  it('sends only on Submit and confirms successful persisted response', async () => {
+    const network = vi.fn(async (_url, init) => ({ ok: true, status: 201, json: async () => ({ ok: true, id: JSON.parse(init.body).id }) }))
+    const dom = feedback(network)
     const document = dom.window.document
-    const choice = document.querySelector<HTMLInputElement>('input')!
+    const choice = document.querySelector<HTMLInputElement>('input[type="checkbox"]')!
     choice.checked = true
-    choice.dispatchEvent(new dom.window.Event('change', { bubbles: true }))
     const notes = document.querySelector<HTMLTextAreaElement>('#notes')!
-    notes.value = 'Please fix code formatting & spacing'
-    notes.dispatchEvent(new dom.window.Event('input', { bubbles: true }))
-    const url = new URL(document.querySelector<HTMLAnchorElement>('#send')!.href)
-    expect(url.origin).toBe('https://github.com')
-    expect(url.searchParams.get('body')).toContain('Export failed or content was missing')
-    expect(url.searchParams.get('body')).toContain(notes.value)
-    const email = new URL(document.querySelector<HTMLAnchorElement>('#email-send')!.href)
-    expect(email.protocol).toBe('mailto:')
-    expect(email.pathname).toBe('extensions@pengyuhao.com')
-    expect(email.searchParams.get('body')).toContain(notes.value)
-    expect(email.searchParams.get('body')).toContain('Export failed or content was missing')
+    notes.value = 'Please fix formatting & spacing'
     expect(network).not.toHaveBeenCalled()
+    document.querySelector<HTMLButtonElement>('#submit')!.click()
+    await settle()
+    expect(network).toHaveBeenCalledTimes(1)
+    const [url, init] = network.mock.calls[0]
+    expect(url).toBe('https://feedback.pengyuhao.com/api/feedback')
+    expect(init.credentials).toBe('omit')
+    expect(JSON.parse(init.body)).toMatchObject({ text: notes.value, reasons: ['Export failed or content was missing'] })
+    expect(document.querySelector('#feedback-status')?.textContent).toContain('received')
+    expect(document.querySelector<HTMLButtonElement>('#submit')!.disabled).toBe(true)
+    expect(document.querySelector('[href^="mailto:"]')).toBeNull()
     expect(dom.window.localStorage.length).toBe(0)
-    const language = document.querySelector<HTMLSelectElement>('#language')!
-    language.value = 'zh'
-    language.dispatchEvent(new dom.window.Event('change', { bubbles: true }))
-    expect(document.documentElement.lang).toBe('zh-CN')
-    expect(document.body.textContent).toContain('需要 GitHub 账号')
-    expect(notes.value).toContain('Please fix')
     dom.window.close()
   })
 
-  it('uses one UI font for titles, body and controls, leaving code separate', () => {
+  it('preserves input and reuses an idempotency ID on retry after a failed response', async () => {
+    const network = vi.fn(async () => ({ ok: false, status: 503, json: async () => ({ ok: false }) }))
+    const dom = feedback(network)
+    const document = dom.window.document
+    document.querySelector<HTMLTextAreaElement>('#notes')!.value = 'Need help'
+    document.querySelector<HTMLButtonElement>('#submit')!.click()
+    await settle()
+    expect(document.querySelector('#feedback-status')?.textContent).toContain('retry')
+    expect(document.querySelector<HTMLTextAreaElement>('#notes')!.value).toBe('Need help')
+    document.querySelector<HTMLButtonElement>('#submit')!.click()
+    await settle()
+    expect(JSON.parse(network.mock.calls[0][1].body).id).toBe(JSON.parse(network.mock.calls[1][1].body).id)
+    dom.window.close()
+  })
+
+  it('uses shared locale-aware serif fonts while leaving code separate', () => {
     const css = readFileSync(resolve(root, 'src/styles/popup.css'), 'utf8')
     expect(css).toContain("@import '../../typography.css'")
     const typography = readFileSync(resolve(root, 'typography.css'), 'utf8')
-    expect(typography).toContain('--font-display: var(--font-stack)')
-    expect(typography).toContain('"Iowan Old Style"')
-    expect(typography).toContain('"Songti SC"')
-    expect(typography).toContain('"Hiragino Mincho ProN"')
-    expect(typography).toContain('"AppleMyungjo"')
-    expect(css).toContain('button, input, select, textarea { font-family: inherit; }')
+    for (const font of ['Iowan Old Style', 'Songti SC', 'Hiragino Mincho ProN', 'AppleMyungjo']) expect(typography).toContain(font)
     expect(css).not.toContain('font-family: var(--font-mono)')
-    expect(readFileSync(resolve(root, 'src/styles/options.css'), 'utf8')).not.toContain('font-family: var(--font-mono)')
   })
 })

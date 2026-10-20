@@ -9,7 +9,9 @@ to PDF and Markdown files. All processing happens locally in your browser.
 
 ## Data Collection
 
-**We do not collect, sell, or store any of your data on extension-operated servers.**
+**Conversation exports stay local and are not sent to extension-operated servers.**
+Separately, the optional feedback website stores only feedback you explicitly submit,
+as described below. We do not sell your data.
 
 The extension accesses the following data solely to perform exports:
 
@@ -19,7 +21,7 @@ The extension accesses the following data solely to perform exports:
 
 ## Data Storage
 
-All data is stored locally in your browser using the `chrome.storage` API:
+Extension export data and preferences are stored locally using the `chrome.storage` API:
 
 - `chrome.storage.local`: Export settings, recent export records, scheduled-export status, the most recent manual export queue (conversation IDs/titles/URLs, a settings snapshot, progress, and browser resource IDs), temporary conversation snapshots, and optional recovery drafts. The manual queue is replaced by the next queue; its transcript bodies are not stored in the queue record. Existing temporary export snapshots and new page-preview snapshots expire after one hour; cleanup may occur later if the browser is closed or storage operations fail. The new page-preview cache allows at most 1 MiB per entry, 2 MiB overall, and 20 entries. Older automatic DOM fallback caching still exists independently; turning off optional recovery does not mean the extension stores no conversation content.
 - Gemini credentials use `chrome.storage.session` when the content script can access it. This area is memory-backed and cleared when the browser session ends. If it is unavailable or inaccessible, Gemini falls back to `chrome.storage.local`, which is stored on disk. Credentials are never synced across devices.
@@ -57,16 +59,24 @@ The extension does not integrate with third-party analytics or advertising.
 After uninstalling, your browser may open our optional feedback page hosted on
 GitHub Pages. Visiting it makes an ordinary web request to GitHub; no chat data,
 account identifier, or extension settings are included in the URL. The page uses
-no analytics or local storage and sends no feedback automatically. If you choose
-to send email feedback, your selected reasons and optional text are placed in a
-mailto draft for extensions@pengyuhao.com. Your mail app and email provider handle
-the draft and delivery; review it and send explicitly. No GitHub account is needed.
-Alternatively, your selected reasons and optional text are placed in a GitHub issue
-draft URL. GitHub receives that URL when you follow it; submitting the draft
-requires a GitHub account and makes the feedback public. Do not include private
-conversations or credentials. Closing the page without following the feedback
-link sends no selected reasons or typed feedback. GitHub's own privacy policy
-applies to its hosting and support services.
+no analytics or local storage and sends no feedback automatically. Clicking
+**Submit feedback** sends your selected reasons, optional text (up to 600 characters),
+page language, and a random submission ID to `feedback.pengyuhao.com`, hosted on
+Cloudflare Workers with D1 storage. No email or GitHub account is required. Feedback
+is visible only through the password-protected maintainer dashboard, not published
+as an issue. Do not include private conversations or credentials.
+
+Feedback is retained for up to 180 days, with daily cleanup. To prevent abuse, the
+service transiently processes the request IP address and stores only a salted,
+time-bucketed HMAC for rate limiting; these counters expire and are cleaned up after
+48 hours. The application does not store raw IP addresses, browser fingerprints,
+chat content, or extension settings, and application request logging is disabled.
+Cloudflare still processes network requests under its own policies. The admin panel
+uses a secure session cookie; the public feedback submission sends no credentials.
+If you need removal of identifiable feedback, contact the support address below
+with sufficient details to locate it. Anonymous submissions cannot always be linked
+to a person. The independent GitHub help link leads to public support, subject to
+GitHub's privacy policy; it does not prefill your private feedback.
 
 ## Data Deletion
 

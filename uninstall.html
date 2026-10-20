@@ -23,12 +23,13 @@
 </fieldset>
 <label class="notes-label" for="notes" data-text="details">Anything to add? (Optional)</label>
 <textarea id="notes" rows="4" maxlength="600" aria-describedby="privacy"></textarea>
-<p id="privacy" class="muted" data-text="privacy">Nothing is sent automatically. Email opens a draft in your mail app; review and send it there. GitHub feedback is public and requires an account. Do not include private chats, passwords, or tokens.</p>
-<div class="feedback-actions"><a id="email-send" class="primary" href="mailto:extensions@pengyuhao.com" data-text="email">Send feedback by email</a>
-<a id="send" href="https://github.com/pinguarmy/ai-chat-exporter/issues/new" data-text="send">Use GitHub instead</a></div>
-<p class="muted"><span data-text="emailHelp">No mail app? Copy this address and email us:</span> <a href="mailto:extensions@pengyuhao.com">extensions@pengyuhao.com</a></p>
-<p class="muted" data-text="draft">Your choices and text stay only in this page until you follow the link. No tracking or automatic submission.</p>
-<section><h2 data-text="help">Need help instead?</h2><p data-text="support">Contact us by email without a GitHub account, or use GitHub Issues to report a bug, ask a question, and follow fixes.</p><a href="https://github.com/pinguarmy/ai-chat-exporter/issues" data-text="open">Get help on GitHub →</a></section>
+<p id="privacy" class="muted" data-text="privacy">Only your selected reasons and optional text are sent when you click Submit. Feedback is private to the maintainer. Do not include private chats, passwords, or tokens.</p>
+<label class="feedback-trap" aria-hidden="true">Website<input id="website" type="text" tabindex="-1" autocomplete="off"></label>
+<div class="feedback-actions"><button id="submit" class="primary" type="button" data-text="submit">Submit feedback</button>
+<a href="https://github.com/pinguarmy/ai-chat-exporter/issues" data-text="send">Get help on GitHub</a></div>
+<p id="feedback-status" role="status" aria-live="polite"></p>
+<p class="muted" data-text="draft">No account or email app needed. Nothing is submitted until you click Submit.</p>
+<section><h2 data-text="help">Need help instead?</h2><p data-text="support">Use the private feedback above without an account, or visit GitHub Issues for public bug reports and questions. Do not post private conversations.</p><a href="https://github.com/pinguarmy/ai-chat-exporter/issues" data-text="open">Get help on GitHub →</a></section>
 <footer><a href="PRIVACY.md" data-text="policy">Privacy policy</a></footer>
 </main>
 </body>

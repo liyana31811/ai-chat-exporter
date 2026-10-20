@@ -28,9 +28,9 @@ The store release is **1.4.1**; **1.4.2 is in development and has not been submi
 
 The upcoming version fixes Claude uploaded text attachments and missing attachment-only turns, preserves code indentation in HTML/PDF, and retains ChatGPT image-only turns with an explicit unavailable-image label when no usable image URL exists. It also unifies locale-aware serif typography and adds optional uninstall feedback.
 
-**Support:** email [extensions@pengyuhao.com](mailto:extensions@pengyuhao.com) without a GitHub account, or use [GitHub Issues](https://github.com/pinguarmy/ai-chat-exporter/issues). Do not send private chats, credentials, or unredacted exports. The [optional feedback page](https://pinguarmy.github.io/ai-chat-exporter/uninstall.html) opens either an email draft or a public GitHub issue draft; nothing is submitted automatically.
+**Support:** email [extensions@pengyuhao.com](mailto:extensions@pengyuhao.com) without a GitHub account, or use [GitHub Issues](https://github.com/pinguarmy/ai-chat-exporter/issues). Do not send private chats, credentials, or unredacted exports. The [optional feedback page](https://pinguarmy.github.io/ai-chat-exporter/uninstall.html) submits privately to the maintainer when you click Submit; no account, email application, or automatic submission is involved. Feedback processing and retention are described in the [privacy policy](PRIVACY.md).
 
-**中文：**商店版目前为 1.4.1，1.4.2 尚未发布。新版修复附件、代码缩进与图片消息遗漏，并统一字体。无需 GitHub 账号也可通过上面的支持邮箱反馈；邮件需在自己的邮件应用中确认发送，GitHub issue 内容公开。
+**中文：**商店版目前为 1.4.1，1.4.2 尚未发布。新版修复附件、代码缩进与图片消息遗漏，并统一字体。反馈页可直接点击提交，私密送达维护者，不需要账号或邮件应用；GitHub 仅作为独立的公开帮助入口。
 
 ## Why?
 

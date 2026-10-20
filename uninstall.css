@@ -15,11 +15,14 @@ select, textarea { font: inherit; color: inherit; background: var(--paper); bord
 textarea { display: block; width: 100%; resize: vertical; margin-top: 10px; }
 a { color: var(--accent); text-underline-offset: 3px; }
 .feedback-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; }
-a.primary { display: inline-block; padding: 10px 18px; background: var(--accent); color: #fff; border-radius: 6px; text-decoration: none; font-weight: 600; }
+button.primary { font: inherit; cursor: pointer; border: 0; }
+button:disabled { opacity: .65; cursor: default; }
+.feedback-trap { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+.primary { display: inline-block; padding: 10px 18px; background: var(--accent); color: #fff; border-radius: 6px; text-decoration: none; font-weight: 600; }
 a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
 .muted { color: var(--muted); font-size: 13px; }
 section { border-top: 1px solid var(--rule); margin-top: 30px; padding-top: 16px; }
 footer { margin-top: 32px; font-size: 13px; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
-@media (prefers-color-scheme: dark) { :root { --paper: #181e1c; --ink: #ece9e0; --muted: #adb8b1; --rule: #3e4a46; --accent: #8abecb; } a.primary { color: #16211e; } }
+@media (prefers-color-scheme: dark) { :root { --paper: #181e1c; --ink: #ece9e0; --muted: #adb8b1; --rule: #3e4a46; --accent: #8abecb; } .primary { color: #16211e; } }
 @media (max-width: 480px) { main { margin: 24px auto; padding: 0 18px; } header { margin-bottom: 28px; } }
