@@ -8,6 +8,7 @@ import { requestSettingsPatch, settingsDifference } from './lib/settings-store'
 import { useState, useEffect, useCallback } from 'react'
 import './styles/popup.css'
 import './styles/options.css'
+import { SUPPORT_URL, supportLabel } from './lib/support'
 import { Toggle } from './components/Toggle'
 import { Section } from './components/Section'
 import { InfoTooltip } from './components/InfoTooltip'
@@ -1143,6 +1144,10 @@ export default function Options() {
         </div>
           </div>
         )}
+      </div>
+
+      <div className="options-card about-card">
+        <a className="link-btn" href={SUPPORT_URL} target="_blank" rel="noopener noreferrer">{supportLabel(locale)}</a>
       </div>
 
       {/* CARD 4: About & License */}

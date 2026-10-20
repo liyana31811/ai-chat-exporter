@@ -784,6 +784,25 @@ export class ChatGPTParser {
         // Keep provider markers intact until message-level citation metadata can
         // map them into structured references in extractChatGptContentReferences.
         textParts.push(part.text)
+      } else if (part.content_type === 'image_asset_pointer') {
+        // asset_pointer is a provider-private handle (usually sediment://),
+        // not a browser image URL. Do not resolve it or copy it into exports.
+        // An empty-URL image still retains image-only turns and can later be
+        // enriched by a confidently matched rendered message.
+        const url = [part.url, part.image_url?.url, part.source?.url, part.file?.url]
+          .find(value => {
+            if (typeof value !== 'string') return false
+            try {
+              const parsed = new URL(value)
+              return ['https:', 'http:'].includes(parsed.protocol) && !parsed.username && !parsed.password
+            } catch { return false }
+          })
+        attachments.push({
+          type: 'image',
+          url: typeof url === 'string' ? url : '',
+          name: typeof part.name === 'string' && part.name.trim() ? part.name : 'Image',
+          uploaded: role === 'user'
+        })
       } else if (part.type === 'image_file') {
         const url = (part.file && part.file.url) || part.image_url?.url || ''
         attachments.push({

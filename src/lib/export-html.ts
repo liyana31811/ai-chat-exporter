@@ -4,7 +4,7 @@ import { toolSummary } from './execution-trace'
 import { transcriptMetadata, isoTimestamp } from './transcript-metadata'
 import { renderCitationContent, isPrivateReferenceUrl, renderableExportUrl, renderableMessageReferences } from './message-references'
 import type { Conversation, ExportOptions, ChatMessage, PdfStyle } from './types'
-import { cleanText, escapeHtml, stripProviderArtifacts } from './dom-utils'
+import { escapeHtml, stripProviderArtifacts } from './dom-utils'
 import { embedInlineImageAttachments, isInlineImageAttachment, removeInlineMarkdownCodeBlocks, removeInlineMarkdownImages } from './inline-media'
 import { isTranscriptVerified } from './conversation-integrity'
 import { localeTag, t, type Locale } from './i18n'
@@ -209,7 +209,7 @@ function generateMessageHtml(message: ChatMessage, conversation: Conversation, o
 
   // Add content
   if (contentWithImageSetting) {
-    content += `<div class="content">${formatHtmlContent(cleanText(contentWithImageSetting))}</div>\n`
+    content += `<div class="content">${formatHtmlContent(stripProviderArtifacts(contentWithImageSetting))}</div>\n`
   }
 
   const references = renderableMessageReferences(message.references, options.referenceExportMode)
@@ -240,6 +240,11 @@ function generateMessageHtml(message: ChatMessage, conversation: Conversation, o
       content += `<figure class="image" data-pdf-block="image"><img src="${escapeHtml(img.url)}" alt="${escapeHtml(img.name || t('Image', locale))}" /></figure>\n`
     })
 
+    if (!conversation.snapshot && options.includeImages !== false) {
+      for (const image of attachments.filter(a => a.type === 'image' && !a.url)) {
+        content += `<div class="attachments">${escapeHtml(image.name || t('Image', locale))} (image unavailable)</div>\n`
+      }
+    }
     if (conversation.snapshot) {
       for (const image of attachments.filter(a => a.type === 'image')) content += `<div class="attachments">${escapeHtml(image.name || 'Image attachment')} (${options.includeImages === false || !image.url ? 'image omitted' : 'external image content is not embedded'})</div>\n`
     }
@@ -750,7 +755,7 @@ function getPrintStyles(_pdfStyle: PdfStyle = 'minimal'): string {
     }
 
     .pdf-document-root {
-      font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans CJK SC', 'Microsoft YaHei', 'Segoe UI', sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'PingFang TC', 'Hiragino Sans', 'Noto Sans CJK SC', 'Microsoft YaHei', sans-serif;
       font-size: 11pt;
       line-height: 1.75;
       color: #202124;

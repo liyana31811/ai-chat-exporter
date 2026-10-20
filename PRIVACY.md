@@ -53,8 +53,17 @@ No export data is sent to extension-operated servers. No analytics, telemetry, o
 
 ## Third-Party Services
 
-None. The extension does not integrate with any third-party analytics, advertising,
-or data processing services.
+The extension does not integrate with third-party analytics or advertising.
+After uninstalling, your browser may open our optional feedback page hosted on
+GitHub Pages. Visiting it makes an ordinary web request to GitHub; no chat data,
+account identifier, or extension settings are included in the URL. The page uses
+no analytics or local storage and sends no feedback automatically. If you choose
+to continue, your selected reasons and optional text are placed in a GitHub issue
+draft URL. GitHub receives that URL when you follow it; submitting the draft
+requires a GitHub account and makes the feedback public. Do not include private
+conversations or credentials. Closing the page without following the feedback
+link sends no selected reasons or typed feedback. GitHub's own privacy policy
+applies to its hosting and support services.
 
 ## Data Deletion
 

@@ -7,6 +7,8 @@ import {
   stoppedScheduledStatus, cancelPersistedScheduledRunResources,
 } from './lib/scheduled-run-resources'
 export { SCHEDULED_ACTIVE_RUN_KEY, SCHEDULED_STOP_REQUEST_KEY } from './lib/scheduled-run-resources'
+import { registerUninstallFeedback } from './lib/support'
+void registerUninstallFeedback()
 import { initializeManualJobs, startManualJob, stopManualJob } from './lib/manual-export-job'
 import { persistSettingsPatch } from './lib/settings-store'
 import { cleanupPageSnapshotPreviews, storePageSnapshotPreview, readPageSnapshotPreview, removePageSnapshotPreview } from './lib/page-snapshot-cache'

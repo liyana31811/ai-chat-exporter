@@ -116,7 +116,7 @@ body {
   border-radius: var(--radius-sm);
   background: var(--bg-secondary);
   color: var(--text-tertiary);
-  font-family: var(--font-mono);
+  font-family: var(--font-stack);
   font-size: 11px;
   font-weight: 600;
 }
@@ -271,7 +271,7 @@ body {
 }
 
 .options-row > select,
-.options-row > input,
+.options-row > input:not(.toggle),
 .options-row > .input {
   flex-shrink: 0;
 }
@@ -329,7 +329,7 @@ body {
 .filename-preview code {
   min-width: 0;
   color: var(--text-primary);
-  font-family: var(--font-mono);
+  font-family: var(--font-stack);
   overflow-wrap: anywhere;
 }
 
@@ -371,7 +371,7 @@ body {
 }
 
 .filename-settings-panel .filename-editor-open .input {
-  font-family: var(--font-mono);
+  font-family: var(--font-stack);
   letter-spacing: 0.01em;
 }
 
@@ -422,7 +422,7 @@ body {
   max-width: 100%;
   flex-wrap: wrap;
   color: var(--text-primary);
-  font-family: var(--font-mono);
+  font-family: var(--font-stack);
   font-size: 12px;
   font-weight: 600;
 }
@@ -450,7 +450,7 @@ body {
 }
 
 .schedule-rail-mono {
-  font-family: var(--font-mono);
+  font-family: var(--font-stack);
   font-size: 12px;
   font-weight: 500;
   overflow-wrap: anywhere;
@@ -582,7 +582,7 @@ body {
 }
 
 .platform-field .schedule-time-control {
-  font-family: var(--font-mono);
+  font-family: var(--font-stack);
   letter-spacing: 0.015em;
 }
 
@@ -849,6 +849,7 @@ body {
 
   .schedule-card-header {
     align-items: flex-start;
+    flex-direction: column;
   }
 
   .schedule-card-header-actions {
@@ -862,7 +863,7 @@ body {
   }
 
   .options-row > select,
-  .options-row > input,
+  .options-row > input:not(.toggle),
   .options-row > .input {
     width: 100% !important;
   }
@@ -895,5 +896,15 @@ body {
 
   .download-boundary-note {
     flex-direction: column;
+  }
+
+  .about-card > .flex {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .about-card .github-chip {
+    max-width: 100%;
+    overflow-wrap: anywhere;
   }
 }

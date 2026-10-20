@@ -87,8 +87,18 @@ export function mergeRenderedImageAttachments(
     const content = mergeInlineRenderedImages(message.content, renderedMessage.content)
     if (additions.length === 0 && content === message.content) return message
 
+    // The API may expose image handles without renderable URLs. Once this
+    // exact turn is matched, rendered images can fill those missing slots.
+    let filled = additions.length
+    const retained = existing.filter(attachment => {
+      if (attachment.type === 'image' && !attachment.url && filled > 0) {
+        filled--
+        return false
+      }
+      return true
+    })
     changed = true
-    return { ...message, content, attachments: additions.length > 0 ? [...existing, ...additions] : existing }
+    return { ...message, content, attachments: additions.length > 0 ? [...retained, ...additions] : existing }
   })
 
   return changed ? { ...preferred, messages } : preferred

@@ -11,6 +11,7 @@ import { requestSettingsPatch } from './lib/settings-store'
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import './styles/popup.css'
+import { SUPPORT_URL, supportLabel } from './lib/support'
 import { ExportButton } from './components/ExportButton'
 import { FormatSelector } from './components/FormatSelector'
 import { ConversationList } from './components/ConversationList'
@@ -1208,7 +1209,8 @@ export default function Popup() {
           </div>
         )}
       </div>
-      <div className="popup-footer">
+      <div className="popup-footer support-footer">
+        <a className="link-btn" href={SUPPORT_URL} target="_blank" rel="noopener noreferrer">{supportLabel(locale)}</a>
         <button type="button" className="link-btn" onClick={() => void chrome.tabs.create({ url: chrome.runtime.getURL('tabs/recovery.html') })}>{T('Open recovery page')}</button>
       </div>
       {tabMode === 'bulk' && <div className="popup-footer">
