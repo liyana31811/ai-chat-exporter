@@ -5,9 +5,9 @@
 ## 1. 找到项目，确定这次要做什么
 
 - 仓库：<https://github.com/pinguarmy/ai-chat-exporter>
-- 本机主目录：`/Users/peterhao/Projects/ai-chat-exporter`
-- 本机别名：`/Users/peterhao/Documents/AI Chat Exporter`，当前为指向主目录的符号链接。
-- 发布规则：[AGENTS.md](../AGENTS.md)。验证后的改动要提交并同步 `main`；用户要求发布时可以执行发布，不必重复索要已经给过的授权。
+- 从仓库根目录执行下列命令；工作区可以位于任意本地目录。
+- 贡献与验证规则：[AGENTS.md](../AGENTS.md)。发布须由具备权限的维护者执行。
+- 本指南只记录可公开、可复用的流程。个人电脑路径、账号、云项目标识和凭据状态应保存在维护者的私有操作记录中，不得提交。
 
 先检查实际状态，不要直接运行上传命令：
 
@@ -39,10 +39,10 @@ gh secret list --json name
 
 本地脚本优先读取进程环境变量，然后读取项目根目录被 Git 忽略的 `.env.local`。GitHub Actions 只读取仓库 Secrets，不会读取本机文件。不要将凭证明文写入文档、提交、聊天、日志或 shell 命令参数；上传 GitHub Secrets 时使用标准输入。
 
-**已核实的配置，2026-09-15：**本机三家凭证均已配置；GitHub Secrets 只有 Chrome 的四项。Firefox 和 Edge 的本地提交已成功过，但这不证明 GitHub 也已配置它们。后续可能变化，以 `gh secret list --json name` 和实际验证为准。
+每次发布均由维护者在私有环境核对所需凭据。不要在公开文档记录账号绑定、部署标识或凭据配置快照。
 
 - 全部 Secrets 齐备时，可以走 GitHub 的三平台发布流程。
-- 按当前配置，GitHub 流程提交 Chrome 并创建 GitHub Release；Firefox、Edge 会跳过，随后用同一批 Release ZIP 在本地补交。
+- 未配置凭据的平台可能被跳过；维护者可以使用同一批 Release ZIP 单独补交。
 - 不要把 GitHub workflow 的绿色状态当作三家都已提交；逐个检查商店步骤是否被跳过。
 
 本地预检：
@@ -54,7 +54,7 @@ npm run check:cws
 
 `--dry-run` 只检查本地配置和文件，不联系商店验证凭证。其汇总文案可能写“成功”，也不代表上传或提审。`check:cws` 才会交换 access token 并读取 Chrome 草稿，它不会上传。
 
-Chrome 的 OAuth 应用位于 GCP 项目 `chrome-extension-publish` / `rugged-matrix-507004-h6`，应保持 **In production**。Testing 会使本项目所用 scope 的 refresh token 七天过期。`gcloud` 登录不等于 Chrome 商店授权。遇到 `invalid_grant`，按顺序执行：
+用于 Chrome 发布的 OAuth 应用应保持 **In production**；具体项目与账号信息仅在维护者私有记录中保存。Testing 会使本项目所用 scope 的 refresh token 七天过期。`gcloud` 登录不等于 Chrome 商店授权。遇到 `invalid_grant`，按顺序执行：
 
 ```sh
 npm run auth:cws
@@ -157,4 +157,4 @@ npm run publish:edge
 
 最终交付逐家写“已上线 / 已提审 / 未提交及原因”，附版本、tag/提交、工作流链接、包校验结果及更新说明去向。审核等待期间不能声称用户已收到更新。结束时检查工作区干净、`main` 已同步。维护工具改动可在 `main` 继续提交，但不得因此改写已发布版本。
 
-本机项目知识入口在 Obsidian 的 `02-项目/ACTIVE/AI-Chat-Exporter/README.md`。在那里记录本次发布结论并链接本文；操作步骤以仓库本文为准，避免多份指南漂移。
+维护者可在私有操作记录中保存账号、环境与发布结论；公开仓库只保留通用步骤和已公开的版本状态。

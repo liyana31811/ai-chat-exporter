@@ -22,6 +22,16 @@ Built by [pinguarmy](https://github.com/pinguarmy). Free forever. One-click expo
 
 ---
 
+## Current development status
+
+The store release is **1.4.1**; **1.4.2 is in development and has not been submitted to the stores**. See [1.4.2 changes and verification limits](docs/releases/1.4.2.md).
+
+The upcoming version fixes Claude uploaded text attachments and missing attachment-only turns, preserves code indentation in HTML/PDF, and retains ChatGPT image-only turns with an explicit unavailable-image label when no usable image URL exists. It also unifies locale-aware serif typography and adds optional uninstall feedback.
+
+**Support:** email [extensions@pengyuhao.com](mailto:extensions@pengyuhao.com) without a GitHub account, or use [GitHub Issues](https://github.com/pinguarmy/ai-chat-exporter/issues). Do not send private chats, credentials, or unredacted exports. The [optional feedback page](https://pinguarmy.github.io/ai-chat-exporter/uninstall.html) opens either an email draft or a public GitHub issue draft; nothing is submitted automatically.
+
+**中文：**商店版目前为 1.4.1，1.4.2 尚未发布。新版修复附件、代码缩进与图片消息遗漏，并统一字体。无需 GitHub 账号也可通过上面的支持邮箱反馈；邮件需在自己的邮件应用中确认发送，GitHub issue 内容公开。
+
 ## Why?
 
 ChatGPT, Gemini, Claude, DeepSeek, and Grok don't let you export your conversations in a clean, portable format. Your conversations are trapped inside their platforms. **AI Chat Exporter** fixes that, for free.
@@ -92,9 +102,9 @@ npm run build
 3. Choose **PDF** or **Markdown**
 4. Click **Export** — file downloads automatically
 
-### Capture the visible page (Gemini)
+### Capture the visible page
 
-If a Gemini conversation is still generating or full provider verification is unavailable, open the extension popup and choose **Capture page snapshot**. This manual capture records only conversation content already loaded and readable in the page DOM; it does **not** verify the complete history. The fixed capture can be copied, saved as Markdown, or opened in preview for PDF export. Change output/privacy options? Recapture before opening another preview or PDF for the same capture. External images may load over the network; offline rendering is not guaranteed.
+If full provider verification is unavailable on a supported conversation, open the extension popup and choose **Capture page snapshot**. This manual capture records only conversation content already loaded and readable in the page DOM; it does **not** verify the complete history. The fixed capture can be copied, saved as Markdown, or opened in preview for PDF export. Change output/privacy options? Recapture before opening another preview or PDF for the same capture. External images may load over the network; offline rendering is not guaranteed.
 
 **Local recovery** is optional and off by default. Enable it for one conversation to save local checkpoints, then use **Open recovery page** to view, export, or delete them. Stopping protection keeps saved drafts; deleting a draft stops its protection. Protection pauses after a browser restart and does not resume automatically. See [Page snapshots and local recovery](docs/page-snapshots.md) for limits and privacy details.
 
@@ -140,7 +150,7 @@ this is not a full internal execution history.
 
 **Create share copy** redacts common credential patterns and marks the archive with
 its redaction count. It cannot identify every secret or private fact; inspect the
-copy before sharing. Raw provider payloads are not collected for these bundles.
+copy before sharing. Raw provider payloads are excluded from share copies; a private archive can include them only when explicitly enabled and available.
 
 Export metadata uses explicit ISO timestamps, separates provider creation from
 first/last visible messages and export time, and lists observed model names.

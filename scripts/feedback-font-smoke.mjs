@@ -69,6 +69,10 @@ try {
     const href = await page.locator('#send').getAttribute('href')
     assert.equal(new URL(href).host, 'github.com')
     assert.ok(new URL(href).searchParams.get('body').includes('代码缩进'))
+    const mail = new URL(await page.locator('#email-send').getAttribute('href'))
+    assert.equal(mail.protocol, 'mailto:')
+    assert.equal(mail.pathname, 'extensions@pengyuhao.com')
+    assert.ok(mail.searchParams.get('body').includes('代码缩进'))
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false)
     await page.screenshot({ path: `${output}/${language}-feedback.png`, fullPage: true })
   }

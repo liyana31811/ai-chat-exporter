@@ -32,6 +32,11 @@ describe('optional uninstall feedback', () => {
     expect(url.origin).toBe('https://github.com')
     expect(url.searchParams.get('body')).toContain('Export failed or content was missing')
     expect(url.searchParams.get('body')).toContain(notes.value)
+    const email = new URL(document.querySelector<HTMLAnchorElement>('#email-send')!.href)
+    expect(email.protocol).toBe('mailto:')
+    expect(email.pathname).toBe('extensions@pengyuhao.com')
+    expect(email.searchParams.get('body')).toContain(notes.value)
+    expect(email.searchParams.get('body')).toContain('Export failed or content was missing')
     expect(network).not.toHaveBeenCalled()
     expect(dom.window.localStorage.length).toBe(0)
     const language = document.querySelector<HTMLSelectElement>('#language')!

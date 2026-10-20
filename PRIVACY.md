@@ -58,7 +58,10 @@ After uninstalling, your browser may open our optional feedback page hosted on
 GitHub Pages. Visiting it makes an ordinary web request to GitHub; no chat data,
 account identifier, or extension settings are included in the URL. The page uses
 no analytics or local storage and sends no feedback automatically. If you choose
-to continue, your selected reasons and optional text are placed in a GitHub issue
+to send email feedback, your selected reasons and optional text are placed in a
+mailto draft for extensions@pengyuhao.com. Your mail app and email provider handle
+the draft and delivery; review it and send explicitly. No GitHub account is needed.
+Alternatively, your selected reasons and optional text are placed in a GitHub issue
 draft URL. GitHub receives that URL when you follow it; submitting the draft
 requires a GitHub account and makes the feedback public. Do not include private
 conversations or credentials. Closing the page without following the feedback
@@ -83,8 +86,9 @@ computer; delete those files separately if you no longer want them.
 
 ## Contact
 
-For privacy questions, open an issue on our GitHub repository:
-https://github.com/pinguarmy/ai-chat-exporter/issues
+For privacy questions, email extensions@pengyuhao.com. For public bug reports,
+you can also use https://github.com/pinguarmy/ai-chat-exporter/issues.
+Do not post private conversations or credentials in public issues.
 
 ## Changes
 
