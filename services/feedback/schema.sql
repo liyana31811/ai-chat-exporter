@@ -5,7 +5,8 @@ CREATE TABLE IF NOT EXISTS feedback (
   text TEXT NOT NULL,
   locale TEXT NOT NULL CHECK(locale IN ('en', 'zh-CN')),
   status TEXT NOT NULL DEFAULT 'new' CHECK(status IN ('new', 'read', 'resolved')),
-  created_at INTEGER NOT NULL
+  created_at INTEGER NOT NULL,
+  contact TEXT NOT NULL DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS feedback_created ON feedback(created_at DESC, id DESC);
 CREATE TABLE IF NOT EXISTS rate_limits (

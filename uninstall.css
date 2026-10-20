@@ -10,8 +10,11 @@ p { margin: 12px 0 20px; }
 fieldset { border: 0; margin: 28px 0 20px; padding: 0; }
 legend, .notes-label { font-weight: 600; margin-bottom: 12px; }
 .choice { display: flex; align-items: start; gap: 12px; padding: 10px 0; cursor: pointer; }
-input { width: 18px; height: 18px; margin-top: 4px; accent-color: var(--accent); flex-shrink: 0; }
-select, textarea { font: inherit; color: inherit; background: var(--paper); border: 1px solid var(--rule); border-radius: 6px; padding: 8px; }
+input[type="checkbox"] { width: 18px; height: 18px; margin-top: 4px; accent-color: var(--accent); flex-shrink: 0; }
+select, textarea, #contact { font: inherit; color: inherit; background: var(--paper); border: 1px solid var(--rule); border-radius: 6px; padding: 8px; }
+#contact { display: block; width: 100%; margin-top: 10px; padding: 12px; }
+.notes-label { display: block; margin-top: 24px; }
+#contact-hint { margin-top: 6px; }
 textarea { display: block; width: 100%; resize: vertical; margin-top: 10px; }
 a { color: var(--accent); text-underline-offset: 3px; }
 .feedback-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; }

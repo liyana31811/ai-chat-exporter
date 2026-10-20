@@ -61,7 +61,7 @@ GitHub Pages. Visiting it makes an ordinary web request to GitHub; no chat data,
 account identifier, or extension settings are included in the URL. The page uses
 no analytics or local storage and sends no feedback automatically. Clicking
 **Submit feedback** sends your selected reasons, optional text (up to 600 characters),
-page language, and a random submission ID to `feedback.pengyuhao.com`, hosted on
+optional contact details (up to 200 characters, used only to reply to your feedback), page language, and a random submission ID to `feedback.pengyuhao.com`, hosted on
 Cloudflare Workers with D1 storage. No email or GitHub account is required. Feedback
 is visible only through the password-protected maintainer dashboard, not published
 as an issue. Do not include private conversations or credentials.

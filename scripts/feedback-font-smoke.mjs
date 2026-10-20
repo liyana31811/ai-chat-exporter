@@ -74,7 +74,7 @@ try {
     await page.locator('#submit').click()
     await page.getByText(language === 'zh' ? '谢谢，反馈已收到。' : 'Thank you. Your feedback has been received.', { exact: true }).waitFor()
     assert.equal(await page.locator('#submit').isDisabled(), true)
-    assert.equal(await page.locator('[href^="mailto:"]').count(), 0)
+    assert.equal(await page.locator('a[href="mailto:extensions@pengyuhao.com"]').count(), 1)
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false)
     await page.screenshot({ path: `${output}/${language}-feedback.png`, fullPage: true })
   }

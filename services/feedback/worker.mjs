@@ -1,3 +1,4 @@
+import { adminPage } from './admin-page.mjs'
 const PUBLIC_ORIGIN = 'https://pinguarmy.github.io'
 const MAX_BYTES = 8192
 const COOKIE = 'feedback_admin'
@@ -52,10 +53,12 @@ export function validateFeedback(body) {
   if (body.honeypot) return null
   if (!Array.isArray(body.reasons) || body.reasons.length > 6 || body.reasons.some(r => !REASONS.includes(r))) throw { status: 400, code: 'invalid_reasons' }
   if (typeof body.text !== 'string' || [...body.text].length > 600 || !['en', 'zh-CN'].includes(body.locale)) throw { status: 400, code: 'invalid_feedback' }
+  const contact = body.contact === undefined ? '' : body.contact
+  if (typeof contact !== 'string' || [...contact].length > 200 || /[\u0000-\u001f\u007f-\u009f]/u.test(contact)) throw { status: 400, code: 'invalid_contact' }
   const text = body.text.trim()
   const reasons = [...new Set(body.reasons)]
   if (!text && !reasons.length) throw { status: 400, code: 'empty_feedback' }
-  return { id: body.id.toLowerCase(), reasons, text, locale: body.locale }
+  return { id: body.id.toLowerCase(), reasons, text, contact: contact.trim(), locale: body.locale }
 }
 async function counter(env, key, max, expires) {
   // SQLite serializes this single statement: competing requests cannot both
@@ -107,8 +110,8 @@ export default {
         const hour = Math.floor(now / HOURS)
         const ip = await privateIp(env, request, hour)
         if (!await counter(env, `submit:${hour}:${ip}`, 10, now + 48 * HOURS) || !await counter(env, `global:${Math.floor(now / 86400)}`, 300, now + 48 * HOURS)) return json({ ok: false, error: 'rate_limited' }, 429, { ...headers, 'Retry-After': '3600' })
-        const saved = await env.DB.prepare('INSERT INTO feedback (id, reasons, text, locale, status, created_at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING RETURNING id')
-          .bind(feedback.id, JSON.stringify(feedback.reasons), feedback.text, feedback.locale, 'new', now).first()
+        const saved = await env.DB.prepare('INSERT INTO feedback (id, reasons, text, locale, status, created_at, contact) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING RETURNING id')
+          .bind(feedback.id, JSON.stringify(feedback.reasons), feedback.text, feedback.locale, 'new', now, feedback.contact).first()
         // A concurrent retry can have inserted the same UUID after our first read.
         const confirmed = saved || await env.DB.prepare('SELECT id FROM feedback WHERE id = ?').bind(feedback.id).first()
         if (!confirmed) throw Error('save_failed')
@@ -130,11 +133,11 @@ export default {
         return json({ ok: true }, 200, { 'Set-Cookie': cookieHeader('', 0) })
       }
       const authenticated = await loggedIn(request, env, now)
-      if (url.pathname === '/admin' && request.method === 'GET') return adminHtml(authenticated)
+      if (url.pathname === '/admin' && request.method === 'GET') return adminPage(authenticated)
       if (url.pathname === '/api/admin/feedback' && request.method === 'GET') {
         requireAuth(authenticated)
         if (request.headers.get('origin') && !ownOrigin(request)) throw { status: 403, code: 'origin_denied' }
-        const result = await env.DB.prepare('SELECT id, reasons, text, locale, status, created_at FROM feedback ORDER BY created_at DESC, id DESC LIMIT ?').bind(100).all()
+        const result = await env.DB.prepare('SELECT id, reasons, text, locale, status, created_at, contact FROM feedback ORDER BY created_at DESC, id DESC LIMIT ?').bind(100).all()
         return json({ ok: true, feedback: result.results || [] })
       }
       const statusMatch = url.pathname.match(/^\/api\/admin\/feedback\/([0-9a-f-]+)$/i)
@@ -158,15 +161,4 @@ export default {
       env.DB.prepare('DELETE FROM rate_limits WHERE expires_at < ?').bind(now),
     ])
   },
-}
-
-function adminHtml(authenticated) {
-  const nonce = crypto.randomUUID().replaceAll('-', '')
-  const script = authenticated ? `
-const list=document.querySelector('#list');
-async function load(){list.replaceChildren();const response=await fetch('/api/admin/feedback');if(response.status===401){location.reload();return}if(!response.ok)throw Error('Load failed / 加载失败');const data=await response.json();for(const item of data.feedback){const card=document.createElement('article');const heading=document.createElement('strong');heading.textContent=new Date(item.created_at*1000).toISOString()+' · '+item.locale;const reasons=document.createElement('p');try{reasons.textContent=JSON.parse(item.reasons).join(' · ')}catch{reasons.textContent=''}const text=document.createElement('p');text.className='content';text.textContent=item.text;const status=document.createElement('select');for(const [value,label] of [['new','New / 未读'],['read','Read / 已读'],['resolved','Resolved / 已处理']]){const option=document.createElement('option');option.value=value;option.textContent=label;status.append(option)}status.value=item.status;status.addEventListener('change',async()=>{status.disabled=true;try{const response=await fetch('/api/admin/feedback/'+encodeURIComponent(item.id),{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:status.value})});if(!response.ok)throw Error('Update failed / 更新失败');item.status=status.value;message.textContent='Saved / 已保存'}catch(error){status.value=item.status;message.textContent=error.message}finally{status.disabled=false}});card.append(heading,reasons,text,status);list.append(card)}if(!data.feedback.length)list.textContent='No feedback / 暂无反馈'}
-document.querySelector('#logout').addEventListener('click',async()=>{const response=await fetch('/api/logout',{method:'POST'});if(response.ok)location.reload();else message.textContent='Logout failed / 退出失败'});load().catch(error=>{message.textContent=error.message});` : `
-document.querySelector('form').addEventListener('submit',async event=>{event.preventDefault();const button=document.querySelector('button');button.disabled=true;try{const response=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:document.querySelector('input').value})});if(response.ok)location.reload();else message.textContent=response.status===429?'Too many attempts. Try later / 尝试过多，请稍后重试':'Sign-in failed / 登录失败'}catch{message.textContent='Network error / 网络错误'}finally{button.disabled=false}});`
-  const html = `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Feedback / 反馈管理</title><style nonce="${nonce}">:root{font-family:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman","Songti SC","Hiragino Mincho ProN",serif;color:#16211e;background:#f7f5f0}body{max-width:760px;margin:40px auto;padding:0 20px;line-height:1.6}input,select,button{font:inherit;padding:8px;max-width:100%;box-sizing:border-box}article{padding:20px 0;border-bottom:1px solid #ccc}.content{white-space:pre-wrap;overflow-wrap:anywhere}#message{color:#8a3324}button{cursor:pointer}</style><h1>Feedback / 反馈管理</h1><p id="message" role="status"></p>${authenticated ? '<button id="logout">Log out / 退出</button><p>Latest 100 submissions · 最近 100 条反馈</p><div id="list"></div>' : '<form><label>Admin password / 管理密码 <input type="password" autocomplete="current-password" required maxlength="1024"></label> <button>Sign in / 登录</button></form>'}<script nonce="${nonce}">const message=document.querySelector('#message');${script}</script></html>`
-  return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer', 'Content-Security-Policy': `default-src 'none'; script-src 'nonce-${nonce}'; style-src 'nonce-${nonce}'; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'` } })
 }

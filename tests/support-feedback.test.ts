@@ -32,6 +32,7 @@ describe('optional uninstall feedback', () => {
     choice.checked = true
     const notes = document.querySelector<HTMLTextAreaElement>('#notes')!
     notes.value = 'Please fix formatting & spacing'
+    document.querySelector<HTMLInputElement>('#contact')!.value = 'reply@example.com'
     expect(network).not.toHaveBeenCalled()
     document.querySelector<HTMLButtonElement>('#submit')!.click()
     await settle()
@@ -39,10 +40,10 @@ describe('optional uninstall feedback', () => {
     const [url, init] = network.mock.calls[0]
     expect(url).toBe('https://feedback.pengyuhao.com/api/feedback')
     expect(init.credentials).toBe('omit')
-    expect(JSON.parse(init.body)).toMatchObject({ text: notes.value, reasons: ['Export failed or content was missing'] })
+    expect(JSON.parse(init.body)).toMatchObject({ text: notes.value, contact: 'reply@example.com', reasons: ['Export failed or content was missing'] })
     expect(document.querySelector('#feedback-status')?.textContent).toContain('received')
     expect(document.querySelector<HTMLButtonElement>('#submit')!.disabled).toBe(true)
-    expect(document.querySelector('[href^="mailto:"]')).toBeNull()
+    expect(document.querySelector('a[href="mailto:extensions@pengyuhao.com"]')?.textContent).toBe('extensions@pengyuhao.com')
     expect(dom.window.localStorage.length).toBe(0)
     dom.window.close()
   })

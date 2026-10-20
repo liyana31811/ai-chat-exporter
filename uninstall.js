@@ -3,9 +3,10 @@
   const endpoint = 'https://feedback.pengyuhao.com/api/feedback'
   const english = Object.fromEntries([...document.querySelectorAll('[data-text]')].map(el => [el.dataset.text, el.textContent]))
   const chinese = {
-    title: '谢谢你试用 AI Chat Exporter。', intro: '如果你已卸载，愿意告诉我们原因吗？完全自愿，也可以直接关闭此页。',
+    title: '谢谢你试用 AI Chat Exporter。', intro: '哪里可以做得更好？反馈会直接交给开发者，无需登录。',
     reason: '为什么卸载？（可选，可多选）', broken: '导出失败或内容不完整', format: '导出格式不符合预期', feature: '缺少需要的平台或功能', usability: '不容易使用', need: '暂时不需要', other: '其他', details: '还有什么想告诉我们？（选填）',
-    privacy: '只有点击提交时，才会发送所选原因和补充文字。反馈仅维护者可见。请勿填写私人聊天、密码或令牌。',
+    contact: '联系方式（选填）', contactHint: '希望收到回复的话，可以留下邮箱或其他联系方式。',
+    privacy: '内容仅开发者可见。请勿填写私人聊天或密码。',
     submit: '提交反馈', send: '到 GitHub 获取帮助', draft: '不需要账号，也不用打开邮件应用。点击提交前不会发送。', help: '需要帮助？', support: '无需账号即可使用上面的私密反馈；也可到 GitHub Issues 公开报告问题和提问。请勿公开私人聊天。', open: '到 GitHub 获取帮助 →', policy: '隐私政策',
   }
   const language = document.getElementById('language')
@@ -32,7 +33,8 @@
     const reasons = [...document.querySelectorAll('input[type="checkbox"]:checked')].map(el => el.value)
     const text = document.getElementById('notes').value.trim()
     if (!reasons.length && !text) { statusKey = 'empty'; refresh(); return }
-    const bodyKey = JSON.stringify({ reasons, text })
+    const contact = document.getElementById('contact').value.trim()
+    const bodyKey = JSON.stringify({ reasons, text, contact })
     if (bodyKey !== lastBody || !requestId) requestId = crypto.randomUUID()
     lastBody = bodyKey
     pending = true; statusKey = 'sending'; refresh()
@@ -41,7 +43,7 @@
     try {
       const response = await fetch(endpoint, {
         method: 'POST', credentials: 'omit', headers: { 'Content-Type': 'application/json' }, signal: controller.signal,
-        body: JSON.stringify({ id: requestId, reasons, text, locale: language.value === 'zh' ? 'zh-CN' : 'en', honeypot: document.getElementById('website').value }),
+        body: JSON.stringify({ id: requestId, reasons, text, contact, locale: language.value === 'zh' ? 'zh-CN' : 'en', honeypot: document.getElementById('website').value }),
       })
       const result = await response.json()
       if (response.status !== 201 || result.ok !== true || result.id !== requestId) {

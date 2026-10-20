@@ -45,6 +45,53 @@ test('save, parameterized injection text, UUID idempotency and no raw IP storage
   sqlite.close()
 })
 
+test('optional contact persists privately, defaults empty and is displayed as plain text', async () => {
+  const { env, sqlite } = setup()
+  const body = { ...data(), contact: '  person@example.test / @handle <script>alert(1)</script>  ' }
+  const response = await worker.fetch(request('/api/feedback', { body }), env)
+  assert.equal(response.status, 201)
+  assert.deepEqual(await response.json(), { ok: true, id: body.id })
+  assert.equal(sqlite.prepare('SELECT contact FROM feedback WHERE id = ?').get(body.id).contact, body.contact.trim())
+  const noContact = data()
+  assert.equal((await worker.fetch(request('/api/feedback', { body: noContact }), env)).status, 201)
+  assert.equal(sqlite.prepare('SELECT contact FROM feedback WHERE id = ?').get(noContact.id).contact, '')
+  assert.equal((await worker.fetch(request('/api/admin/feedback', { method: 'GET', origin: null }), env)).status, 401)
+  const cookie = await login(env)
+  const list = await worker.fetch(request('/api/admin/feedback', { method: 'GET', origin: ORIGIN, cookie }), env)
+  const rows = (await list.json()).feedback
+  assert.equal(rows.find(row => row.id === body.id).contact, body.contact.trim())
+  assert.equal(rows.find(row => row.id === noContact.id).contact, '')
+  const html = await (await worker.fetch(request('/admin', { method: 'GET', origin: null, cookie }), env)).text()
+  assert.ok(html.includes("contact.textContent=t('contact')+': '+item.contact"))
+  assert.ok(html.includes("contact:['Contact','联系方式']"))
+  assert.ok(!html.includes('mailto:'))
+  assert.ok(!html.includes('innerHTML'))
+  sqlite.close()
+})
+
+test('contact accepts 200 Unicode characters but rejects longer, nonstring and control characters', async () => {
+  const { env, sqlite } = setup()
+  const contact = '联'.repeat(200)
+  assert.equal((await worker.fetch(request('/api/feedback', { body: { ...data(), contact } }), env)).status, 201)
+  for (const invalid of ['x'.repeat(201), '联'.repeat(201), null, 1, {}, 'name\nhandle', 'name\tvalue', 'bad\u0000value', 'bad\u007fvalue', 'bad\u0085value']) {
+    const response = await worker.fetch(request('/api/feedback', { body: { ...data(), contact: invalid } }), env)
+    assert.equal(response.status, 400)
+    assert.deepEqual(await response.json(), { ok: false, error: 'invalid_contact' })
+  }
+  assert.equal(sqlite.prepare('SELECT COUNT(*) AS n FROM feedback').get().n, 1)
+  sqlite.close()
+})
+
+test('non-destructive contact migration preserves existing submissions with an empty default', () => {
+  const sqlite = new DatabaseSync(':memory:')
+  sqlite.exec("CREATE TABLE feedback (id TEXT PRIMARY KEY, reasons TEXT NOT NULL, text TEXT NOT NULL, locale TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'new', created_at INTEGER NOT NULL)")
+  const id = crypto.randomUUID()
+  sqlite.prepare('INSERT INTO feedback VALUES (?,?,?,?,?,?)').run(id, '["Other"]', 'Existing feedback', 'en', 'read', 123)
+  sqlite.exec(readFileSync(new URL('./migrations/0002-contact.sql', import.meta.url), 'utf8'))
+  assert.deepEqual({ ...sqlite.prepare('SELECT * FROM feedback WHERE id = ?').get(id) }, { id, reasons: '["Other"]', text: 'Existing feedback', locale: 'en', status: 'read', created_at: 123, contact: '' })
+  sqlite.close()
+})
+
 test('only allowed origins get CORS, with narrow preflight and strict body bounds', async () => {
   const { env, sqlite } = setup()
   for (const origin of ['https://evil.example', 'null', undefined]) {
@@ -128,7 +175,7 @@ test('password attempts throttle at ten; constant-loop comparison rejects change
 test('admin session expires after eight hours and listing is bounded to 100', async () => {
   const { env, sqlite } = setup()
   const cookie = await login(env)
-  const insert = sqlite.prepare('INSERT INTO feedback VALUES (?,?,?,?,?,?)')
+  const insert = sqlite.prepare('INSERT INTO feedback (id, reasons, text, locale, status, created_at) VALUES (?,?,?,?,?,?)')
   const now = Math.floor(Date.now() / 1000)
   for (let i = 0; i < 105; i++) insert.run(crypto.randomUUID(), '[]', String(i), 'en', 'new', now + i)
   const response = await worker.fetch(request('/api/admin/feedback', { method: 'GET', origin: ORIGIN, cookie }), env)
@@ -158,7 +205,7 @@ test('malformed admin changes, foreign login and missing configuration fail clos
 test('scheduled removes old feedback and expired anonymous counters', async () => {
   const { env, sqlite } = setup()
   const now = Math.floor(Date.now() / 1000)
-  sqlite.prepare('INSERT INTO feedback VALUES (?,?,?,?,?,?)').run(crypto.randomUUID(), '[]', 'old', 'en', 'new', now - 181 * 86400)
+  sqlite.prepare('INSERT INTO feedback (id, reasons, text, locale, status, created_at) VALUES (?,?,?,?,?,?)').run(crypto.randomUUID(), '[]', 'old', 'en', 'new', now - 181 * 86400)
   sqlite.prepare('INSERT INTO rate_limits VALUES (?,?,?)').run('expired-hash', 1, now - 1)
   await worker.scheduled({}, env)
   assert.equal(sqlite.prepare('SELECT COUNT(*) AS n FROM feedback').get().n, 0)
