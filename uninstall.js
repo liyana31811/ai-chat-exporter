@@ -5,6 +5,7 @@
   const chinese = {
     title: '谢谢你试用 AI Chat Exporter。', intro: '哪里可以做得更好？反馈会直接交给开发者，无需登录。',
     reason: '为什么卸载？（可选，可多选）', broken: '导出失败或内容不完整', format: '导出格式不符合预期', feature: '缺少需要的平台或功能', usability: '不容易使用', need: '暂时不需要', other: '其他', details: '还有什么想告诉我们？（选填）',
+    issueHelp: '遇到使用问题？到 GitHub Issues 获取帮助 →',
     contact: '联系方式（选填）', contactHint: '希望收到回复的话，可以留下邮箱或其他联系方式。',
     privacy: '内容仅开发者可见。请勿填写私人聊天或密码。',
     submit: '提交反馈', send: '到 GitHub 获取帮助', draft: '不需要账号，也不用打开邮件应用。点击提交前不会发送。', help: '需要帮助？', support: '无需账号即可使用上面的私密反馈；也可到 GitHub Issues 公开报告问题和提问。请勿公开私人聊天。', open: '到 GitHub 获取帮助 →', policy: '隐私政策',
