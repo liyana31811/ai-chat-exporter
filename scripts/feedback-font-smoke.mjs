@@ -34,10 +34,10 @@ try {
       if (route === 'options.html') {
         const layout = await page.evaluate(() => ({
           toggles: [...document.querySelectorAll('.toggle')].map(el => el.getBoundingClientRect().width),
-          heading: document.querySelector('.schedule-card-header h2')?.getBoundingClientRect().width,
+          headingHeight: document.querySelector('.schedule-card-header h2')?.getBoundingClientRect().height,
         }))
         assert.ok(layout.toggles.every(width => width <= 40), 'Toggle stretched by settings row CSS')
-        assert.ok(layout.heading > 150, 'Schedule heading squeezed into a vertical column')
+        assert.ok(layout.headingHeight > 0 && layout.headingHeight < 60, 'Schedule heading squeezed into a vertical column')
       }
       if (route === 'popup.html' || route === 'options.html') assert.equal(await page.locator('a[href="https://github.com/pinguarmy/ai-chat-exporter/issues"]').count(), 1)
       await page.screenshot({ path: `${output}/${locale}-${route.replaceAll('/', '-')}.png`, fullPage: true })
