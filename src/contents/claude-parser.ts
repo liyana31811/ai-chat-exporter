@@ -615,6 +615,21 @@ export class ClaudeParser {
             ? msg.message.content
             : []
         const attachments: ChatMessage['attachments'] = []
+        // Claude exposes uploaded text files outside content blocks. Keep a
+        // per-turn reference even without extracted text so upload-only turns
+        // survive, and reuse document artifacts for optional body export.
+        for (const file of Array.isArray(msg.attachments) ? msg.attachments : []) {
+          if (!file || typeof file !== 'object') continue
+          const name = firstString(file.file_name, file.name) || 'Uploaded File'
+          attachments.push({ type: 'file', name, url: '', uploaded: role === 'user' })
+          artifacts.push({
+            type: 'document',
+            title: name,
+            content: typeof file.extracted_content === 'string' ? file.extracted_content : '',
+            mimeType: firstString(file.file_type) || undefined,
+            uploaded: role === 'user',
+          })
+        }
         for (const block of blocks) {
           if (!block || typeof block !== 'object') continue
           const typedBlock = block as Record<string, any>
