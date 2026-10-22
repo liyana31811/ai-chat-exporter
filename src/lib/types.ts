@@ -449,6 +449,8 @@ export interface PlatformScheduleConfig {
   enabled: boolean
   /** How often to check for new conversations */
   frequency: ScheduleFrequency
+  /** Skip conversations already in this platform's export history (default: true). */
+  skipAlreadyExported: boolean
   /** Max conversations to export per run (prevents runaway exports) */
   maxPerRun: number
   /**

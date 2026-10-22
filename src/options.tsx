@@ -831,6 +831,15 @@ export default function Options() {
                             </label>
                           </div>
 
+                          <Toggle
+                            id={`scheduled-skip-archived-${platform}`}
+                            label={T('Skip Already Archived')}
+                            checked={pConfig.skipAlreadyExported}
+                            onChange={(skipAlreadyExported) => updatePlatform({ skipAlreadyExported })}
+                            description={T('Turn off to re-export up to N chats from the start of the provider list every run, using Per-platform max. Export history is kept.')}
+                            ariaLabel={`${PLATFORM_LABELS[platform]}: ${T('Skip Already Archived')}`}
+                          />
+
                           <details className="platform-advanced">
                             <summary>{T('Advanced options')}</summary>
                             <div className="platform-row-controls">
@@ -887,7 +896,7 @@ export default function Options() {
                               <label className="platform-field platform-field-max">
                                 <span>
                                   {T('Per-platform max')}
-                                  <InfoTooltip text={T('Most new chats to attempt from this platform in one scheduled run.')} />
+                                  <InfoTooltip text={T('Most chats to attempt from this platform in one scheduled run.')} />
                                 </span>
                                 <input
                                   type="number"
