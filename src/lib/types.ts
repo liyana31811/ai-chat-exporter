@@ -479,6 +479,10 @@ export interface ScheduledExportSettings {
   enabled: boolean
   /** How often the background worker wakes up to inspect due platforms. */
   checkIntervalMinutes: number
+  /** Optional Sunday-first weekdays (0–6). null/absent means every day; [] pauses automatic runs. */
+  allowedDays?: number[] | null
+  /** Optional local daily window; an overnight window belongs to its starting weekday. */
+  dailyWindow?: { start: string; end: string } | null
   /** Per-platform schedule configurations */
   platforms: Record<ExportablePlatform, PlatformScheduleConfig>
   /** Export format for scheduled exports (default: markdown) */
@@ -537,6 +541,8 @@ export interface ScheduledExportPlatformStatus {
 
 /** Status of the last scheduled export run */
 export interface ScheduledExportStatus {
+  /** Queued work paused at the end of the allowed days/hours; completed files were retained. */
+  lastRunWindowClosed?: boolean
   /** Opaque identifier for the active run. It contains no conversation data. */
   runId?: string
   /** When the last run started */

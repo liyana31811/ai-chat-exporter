@@ -226,6 +226,15 @@ Provider requests are paced/bounded, run state is persisted, completed exports a
 
 Scheduled runs also consume provider list metadata. An explicit partial API list or sidebar fallback may export eligible items, but it cannot advance the provider `lastRun` checkpoint because unseen conversations must remain eligible on the next run.
 
+Optional global **Automatic export days & hours** restricts all automatic runs while preserving each platform's frequency. Both restrictions are off by default, including migrated settings. Select any weekdays, or use **Weekdays (Mon–Fri)**; public holidays are not automatically excluded. Times use the device's current local timezone, displayed in Settings (not a fixed UTC offset).
+
+- Start is inclusive; end is exclusive. An overnight window such as Friday 22:00–06:00 continues into Saturday morning and belongs to Friday.
+- An enabled empty day selection, missing/invalid time, or equal start/end time pauses automatic exports. Disable the time-window control for unrestricted hours.
+- With either restriction enabled, the browser checks once per minute so a narrow window cannot be missed solely because of the old alarm interval. This adds local wake-ups, not extra provider exports; platform frequencies stay unchanged. With both restrictions disabled, the original check cadence is retained.
+- Browser alarms may still wake the worker outside the window, but do not start provider scans/downloads. Downloads already started may finish; queued work waits and does not advance the successful-run checkpoint. Missed intervals do not create catch-up batches.
+- **Trigger Run Now** deliberately bypasses the global enable switch, due-time check, and days/hours restrictions; it still uses enabled platforms and the existing run limits.
+- Existing daily/weekly lateness rules stay unchanged: daily exact-time runs are eligible at/after that time on the current day, and weekly exact-time runs can be late within their current weekly period. A daily 18:00 target with a 09:00–17:00 window has no eligible automatic run; Settings reports the conflict rather than moving the target. Next-run times remain estimates for the next browser check.
+
 ### 11. Retry Behavior
 
 `parser-runtime.ts` briefly caches deterministic authoritative-detail failures so background hydration loops do not hit the same provider endpoint every ~750 ms.
