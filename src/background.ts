@@ -46,7 +46,6 @@ import {
   getDefaultScheduledExportSettings,
   clampScheduledCheckIntervalMinutes,
   clampScheduledIntervalMinutes,
-  isDueForSchedule,
   delay,
   PLATFORM_URLS,
   ALL_PLATFORMS,
@@ -62,7 +61,7 @@ import {
   isAuthenticationRequiredError,
   isLikelyProviderLoginUrl,
 } from './lib/scheduled-export'
-import { canStartScheduledWork } from './lib/scheduled-export-window'
+import { canStartScheduledWork, isDueForWindowedSchedule } from './lib/scheduled-export-window'
 import { isProviderRateLimitError } from './lib/provider-rate-limit'
 import { cleanupExpiredPreviewSnapshots, sweepUnindexedPreviewSnapshots, storePreviewSnapshot, PREVIEW_SNAPSHOT_MESSAGE } from './lib/preview-snapshots'
 
@@ -864,7 +863,7 @@ async function checkAndRunScheduledExports(
     const result = await chrome.storage.local.get(lastRunKey)
     const lastRun = (result[lastRunKey] as number) || 0
 
-    if (force || isDueForSchedule(platformConfig, lastRun, now)) {
+    if (force || isDueForWindowedSchedule(platformConfig, lastRun, now, config)) {
       duePlatforms.push(platform)
     }
   }
@@ -902,12 +901,14 @@ async function checkAndRunScheduledExports(
       }
       reporter.markProviderActive(platform)
       try {
+        // A queued provider may start in a later anchored slot than the first provider.
+        const platformStartedAt = config.dailyWindow != null ? Date.now() : now
         const runResult = await runScheduledExportForPlatform(platform, config, budget, reporter, signal, runId, force)
         // Do not postpone the next automatic retry after a platform-level
         // failure, cancellation, expired login, or a network outage.
         if (runResult.succeeded && !signal?.aborted) {
           try {
-            await chrome.storage.local.set({ [`scheduledExport-lastRun-${platform}`]: now })
+            await chrome.storage.local.set({ [`scheduledExport-lastRun-${platform}`]: platformStartedAt })
           } catch {
             // A checkpoint failure must not leave the visible task stuck in
             // “running”. The dedup index still prevents duplicate files, and

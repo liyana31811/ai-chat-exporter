@@ -57,7 +57,7 @@ export function ScheduleWindowControls({ settings, locale, onChange }: {
         <div className="platform-row-controls">
           {(['start', 'end'] as const).map(boundary => (
             <label className="platform-field" key={boundary}>
-              <span>{T(boundary === 'start' ? 'Window start (inclusive)' : 'Window end (exclusive)')}</span>
+              <span>{T(boundary === 'start' ? 'Window start (inclusive)' : 'Window end (inclusive minute)')}</span>
               <input type="time" className="input schedule-control schedule-time-control"
                 value={settings.dailyWindow![boundary]}
                 aria-invalid={error === 'time'}
@@ -75,6 +75,9 @@ export function ScheduleWindowControls({ settings, locale, onChange }: {
           ? 'No weekdays selected — automatic exports are paused.'
           : 'Choose valid, different start and end times — automatic exports are paused.')}
       </p>}
+      {settings.dailyWindow != null && (
+        <p className="schedule-note">{T('Interval schedules follow window start + N × interval, not save time or last run. Only the latest due slot runs after a late wake. Explicit daily/weekly times take priority.')}</p>
+      )}
       {(settings.allowedDays != null || settings.dailyWindow != null) && (
         <p className="schedule-note">{T('With days/hours restrictions, the browser checks once per minute. Platform export frequencies stay unchanged.')}</p>
       )}

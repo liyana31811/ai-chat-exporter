@@ -113,6 +113,7 @@ const COPY = {
   day: 'Day',
   runAt: 'Runs at or shortly after {0}, local time.',
   rolling: 'No time set — runs on a rolling interval from the last run.',
+  windowInterval: 'Interval schedules follow window start + N × interval, not save time or last run. Only the latest due slot runs after a late wake. Explicit daily/weekly times take priority.',
   customInterval: 'Interval (minutes)',
   customIntervalHint: 'Runs on a rolling interval from the last completed run. Very short intervals can trigger provider rate limits.',
   everyMinutes: 'Runs every {0} minutes, at or shortly after the interval is due.',
@@ -690,7 +691,7 @@ export default function Options() {
               <div className="schedule-rail-cell">
                 <span className="schedule-rail-label">
                   {T(COPY.railSchedule)}
-                  <InfoTooltip text={T(COPY.timing)} />
+                  <InfoTooltip text={T(scheduleSettings.dailyWindow ? COPY.windowInterval : COPY.timing)} />
                 </span>
                 <span className={`schedule-rail-value ${scheduleSettings.enabled ? 'is-on' : ''}`}>
                   {scheduleSettings.enabled ? T(COPY.railOn) : T(COPY.railOff)}
@@ -844,7 +845,7 @@ export default function Options() {
                                 <label className="platform-field">
                                   <span>
                                     {T(COPY.customInterval)}
-                                    <InfoTooltip text={T(COPY.customIntervalHint)} />
+                                    <InfoTooltip text={T(scheduleSettings.dailyWindow ? COPY.windowInterval : COPY.customIntervalHint)} />
                                   </span>
                                   <input
                                     type="number"
@@ -950,7 +951,7 @@ export default function Options() {
                                 ? t(COPY.everyMinutes, locale, pConfig.intervalMinutes ?? DEFAULT_SCHEDULE_INTERVAL_MINUTES)
                                 : pConfig.timeOfDay
                                 ? t(COPY.runAt, locale, pConfig.timeOfDay)
-                                : T(COPY.rolling)}
+                                : T(scheduleSettings.dailyWindow ? COPY.windowInterval : COPY.rolling)}
                             </p>
                           )}
                         </>

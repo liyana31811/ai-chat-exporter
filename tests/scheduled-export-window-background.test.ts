@@ -63,7 +63,7 @@ it('does not open provider tabs, download or advance checkpoints outside the win
   vi.setSystemTime(new Date(2026, 9, 24, 12))
   await alarm()
   expect(api.tabs.create).not.toHaveBeenCalled()
-  vi.setSystemTime(new Date(2026, 9, 26, 17))
+  vi.setSystemTime(new Date(2026, 9, 26, 17, 1))
   await alarm()
   expect(api.tabs.create).not.toHaveBeenCalled()
   stored.settings.scheduledExport.allowedDays = []
@@ -104,7 +104,7 @@ it('lets an active download finish but starts no next item or provider after the
   stored.settings.scheduledExport.platforms.claude.enabled = true
   stored.settings.scheduledExport.maxConcurrentPlatforms = 1
   await import('../src/background')
-  vi.setSystemTime(new Date(2026, 9, 23, 16, 59, 59))
+  vi.setSystemTime(new Date(2026, 9, 23, 17, 0, 59))
   await alarm()
   expect(api.downloads.download).toHaveBeenCalledTimes(1)
   await vi.advanceTimersByTimeAsync(3001)
@@ -125,11 +125,11 @@ it('lets an active download finish but starts no next item or provider after the
 it('does not launch a download when an in-flight detail read resolves after the window closes', async () => {
   const send = api.tabs.sendMessage.getMockImplementation()
   api.tabs.sendMessage.mockImplementation(async (id: number, request: any) => {
-    if (request.type === 'FETCH_CONVERSATION_DETAIL') vi.setSystemTime(new Date(2026, 9, 23, 17))
+    if (request.type === 'FETCH_CONVERSATION_DETAIL') vi.setSystemTime(new Date(2026, 9, 23, 17, 1))
     return send(id, request)
   })
   await import('../src/background')
-  vi.setSystemTime(new Date(2026, 9, 23, 16, 59, 59))
+  vi.setSystemTime(new Date(2026, 9, 23, 17, 0, 59))
   await alarm()
   expect(api.downloads.download).not.toHaveBeenCalled()
   expect(stored['scheduledExport-lastRun-chatgpt']).toBeUndefined()
@@ -140,13 +140,13 @@ it('does not launch a page fallback when direct detail becomes incomplete after 
   const send = api.tabs.sendMessage.getMockImplementation()
   api.tabs.sendMessage.mockImplementation(async (id: number, request: any) => {
     if (request.type === 'FETCH_CONVERSATION_DETAIL') {
-      vi.setSystemTime(new Date(2026, 9, 23, 17))
+      vi.setSystemTime(new Date(2026, 9, 23, 17, 1))
       return { data: null }
     }
     return send(id, request)
   })
   await import('../src/background')
-  vi.setSystemTime(new Date(2026, 9, 23, 16, 59, 59))
+  vi.setSystemTime(new Date(2026, 9, 23, 17, 0, 59))
   await alarm()
   expect(api.tabs.create).toHaveBeenCalledTimes(1)
   expect(api.downloads.download).not.toHaveBeenCalled()
@@ -157,7 +157,7 @@ it('does not launch a page fallback when direct detail becomes incomplete after 
 it('does not retry an empty conversation list after the window closes', async () => {
   items = []
   await import('../src/background')
-  vi.setSystemTime(new Date(2026, 9, 23, 16, 59, 59))
+  vi.setSystemTime(new Date(2026, 9, 23, 17, 0, 59))
   await alarm()
   await vi.advanceTimersByTimeAsync(1001)
   const listCalls = api.tabs.sendMessage.mock.calls.filter(([, request]: any[]) => request.type === 'FETCH_ALL_CONVERSATIONS')
@@ -185,4 +185,65 @@ it('sets minute wake-ups for a narrow window without changing hourly export freq
   await vi.advanceTimersByTimeAsync(60_000)
   await alarm()
   expect(api.downloads.download).toHaveBeenCalledTimes(1)
+})
+
+it('anchors actual automatic scans to start+interval across late wakes and settings saves', async () => {
+  Object.assign(stored.settings.scheduledExport.platforms.chatgpt, { frequency: 'custom', intervalMinutes: 120 })
+  downloadState = 'complete'
+  await import('../src/background')
+  vi.setSystemTime(new Date(2026, 9, 26, 9, 7))
+  await alarm()
+  expect(api.tabs.create).toHaveBeenCalledTimes(1)
+  stored.settings.scheduledExport = structuredClone(stored.settings.scheduledExport)
+  vi.setSystemTime(new Date(2026, 9, 26, 10, 59))
+  await alarm()
+  expect(api.tabs.create).toHaveBeenCalledTimes(1)
+  vi.setSystemTime(new Date(2026, 9, 26, 11, 0, 20))
+  await alarm()
+  expect(api.tabs.create).toHaveBeenCalledTimes(2)
+  await alarm()
+  expect(api.tabs.create).toHaveBeenCalledTimes(2)
+  expect(stored['scheduledExport-lastRun-chatgpt']).toBe(new Date(2026, 9, 26, 11, 0, 20).getTime())
+})
+
+it('runs an aligned final slot at 17:00:20 but never first-starts it at 17:01', async () => {
+  Object.assign(stored.settings.scheduledExport.platforms.chatgpt, { frequency: 'custom', intervalMinutes: 120 })
+  stored['scheduledExport-lastRun-chatgpt'] = new Date(2026, 9, 23, 15, 20).getTime()
+  downloadState = 'complete'
+  await import('../src/background')
+  vi.setSystemTime(new Date(2026, 9, 23, 17, 0, 20))
+  await alarm()
+  expect(api.downloads.download).toHaveBeenCalledTimes(1)
+  vi.setSystemTime(new Date(2026, 9, 26, 17, 1))
+  await alarm()
+  expect(api.tabs.create).toHaveBeenCalledTimes(1)
+})
+
+it('checkpoints a queued provider at its own start slot, not the earlier queue start', async () => {
+  const config = stored.settings.scheduledExport
+  config.maxConcurrentPlatforms = 1
+  config.platforms.chatgpt.frequency = 'hourly'
+  config.platforms.claude = { ...config.platforms.chatgpt, enabled: true }
+  const send = api.tabs.sendMessage.getMockImplementation()
+  api.tabs.create.mockImplementation(async ({ url }: { url: string }) => ({ id: url.includes('claude') ? 10 : 9 }))
+  api.tabs.get = async (id: number) => ({ id, status: 'complete', url: id === 10 ? 'https://claude.ai/' : 'https://chatgpt.com/' })
+  api.tabs.sendMessage.mockImplementation(async (id: number, request: any) => {
+    if (id === 10 && request.type === 'DETECT_PLATFORM') return { data: { platform: 'claude' } }
+    if (id === 10 && request.type === 'FETCH_ALL_CONVERSATIONS') return { data: [], meta: { source: 'api', complete: true } }
+    return send(id, request)
+  })
+  await import('../src/background')
+  vi.setSystemTime(new Date(2026, 9, 26, 9, 59))
+  await alarm()
+  expect(api.tabs.create).toHaveBeenCalledTimes(1)
+  vi.setSystemTime(new Date(2026, 9, 26, 10, 5))
+  downloadState = 'complete'
+  changes.forEach(cb => cb({ id: 42, state: { current: 'complete' } }))
+  await vi.advanceTimersByTimeAsync(2100)
+  expect(api.tabs.create).toHaveBeenCalledTimes(2)
+  expect(stored['scheduledExport-lastRun-chatgpt']).toBe(new Date(2026, 9, 26, 9, 59).getTime())
+  expect(stored['scheduledExport-lastRun-claude']).toBe(new Date(2026, 9, 26, 10, 5).getTime())
+  vi.setSystemTime(new Date(2026, 9, 26, 10, 6))
+  await alarm()
+  expect(api.tabs.create.mock.calls.filter(([tab]: any) => tab.url.includes('claude'))).toHaveLength(1)
 })

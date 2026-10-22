@@ -33,7 +33,7 @@ describe('schedule window controls', () => {
     fireEvent.click(screen.getByRole('switch', { name: 'Limit to a daily time window' }))
     expect(screen.getByRole('alert').textContent).toContain('automatic exports are paused')
     const start = screen.getByLabelText('Window start (inclusive)')
-    const end = screen.getByLabelText('Window end (exclusive)')
+    const end = screen.getByLabelText('Window end (inclusive minute)')
     fireEvent.change(start, { target: { value: '22:00' } })
     fireEvent.change(end, { target: { value: '22:00' } })
     expect(screen.getByRole('alert').textContent).toContain('different start and end')
