@@ -103,6 +103,7 @@ it('preserves archive-once and its backlog checkpoint behavior by default', asyn
   await import('../src/background')
   await run()
   expect(reads.map(read => read.id)).toEqual(['b', 'c'])
+  expect(api.downloads.download.mock.calls[0][0]).not.toHaveProperty('conflictAction')
   expect(stored['scheduledExport-lastRun-chatgpt']).toBeUndefined()
   await run()
   expect(reads.map(read => read.id)).toEqual(['b', 'c', 'd'])
@@ -136,6 +137,69 @@ it('re-exports current details for the first N each run without clearing other p
   expect(stored['exportedRecord-claude-a']).toEqual({ id: 'a', title: 'Synthetic prior export' })
   expect(stored['scheduledExport-lastRun-claude']).toBe(123)
 })
+
+it('opts into overwriting the same stable path with refreshed content, not filename-based skipping', async () => {
+  stored.settings.filenamePattern = '{platform}-{id}'
+  stored.settings.scheduledExport.platforms.chatgpt.skipAlreadyExported = false
+  stored.settings.scheduledExport.platforms.chatgpt.overwriteExistingFiles = true
+  await import('../src/background')
+  await run()
+  const firstDownload = api.downloads.download.mock.calls[0][0]
+  expect(firstDownload).toMatchObject({ filename: 'chatgpt-a.md', conflictAction: 'overwrite', saveAs: false })
+  expect(api.downloads.download.mock.calls[1][0]).toMatchObject({ filename: 'chatgpt-b.md', conflictAction: 'overwrite' })
+
+  revision = 'Changed earlier answer, same chat'
+  await run()
+  const repeatedDownload = api.downloads.download.mock.calls[2][0]
+  expect(repeatedDownload.filename).toBe(firstDownload.filename)
+  expect(repeatedDownload.conflictAction).toBe('overwrite')
+  const decode = (url: string) => Buffer.from(url.split(',')[1], 'base64').toString()
+  expect(decode(firstDownload.url)).toContain('First answer')
+  expect(decode(repeatedDownload.url)).toContain('Changed earlier answer, same chat')
+  expect(stored.scheduledExportStatus.lastRunExported).toBe(2)
+  expect(stored['exportedRecord-chatgpt-a'].filename).toBe('chatgpt-a.md')
+})
+
+it('limits overwrite to the selected platform and restores default conflict behavior when turned off', async () => {
+  stored.settings.filenamePattern = '{platform}-{id}'
+  const schedule = stored.settings.scheduledExport
+  schedule.platforms.chatgpt.skipAlreadyExported = false
+  schedule.platforms.chatgpt.overwriteExistingFiles = true
+  schedule.platforms.claude.enabled = true
+  schedule.platforms.claude.skipAlreadyExported = false
+  await import('../src/background')
+  await run()
+  const downloads = api.downloads.download.mock.calls.map(([options]: [any]) => options)
+  const chatgptDownloads = downloads.filter((options: any) => options.filename.startsWith('chatgpt-'))
+  const claudeDownloads = downloads.filter((options: any) => options.filename.startsWith('claude-'))
+  expect(chatgptDownloads).toHaveLength(2)
+  expect(claudeDownloads).toHaveLength(4)
+  for (const options of chatgptDownloads) expect(options.conflictAction).toBe('overwrite')
+  for (const options of claudeDownloads) expect(options).not.toHaveProperty('conflictAction')
+
+  stored.settings.scheduledExport.platforms.chatgpt.overwriteExistingFiles = false
+  api.downloads.download.mockClear()
+  await run()
+  expect(api.downloads.download).toHaveBeenCalledTimes(6)
+  for (const [options] of api.downloads.download.mock.calls) expect(options).not.toHaveProperty('conflictAction')
+})
+
+it.each(['request failure', 'interrupted download'])(
+  'does not record an overwrite as successful after %s', async (failure) => {
+    ids = ['new-chat']
+    stored.settings.scheduledExport.platforms.chatgpt.skipAlreadyExported = false
+    stored.settings.scheduledExport.platforms.chatgpt.overwriteExistingFiles = true
+    if (failure === 'request failure') failDownloads = true
+    else api.downloads.search.mockResolvedValue([{ id: 1, state: 'interrupted' }])
+    await import('../src/background')
+    await run()
+    expect(api.downloads.download.mock.calls[0][0].conflictAction).toBe('overwrite')
+    expect(stored.scheduledExportStatus.lastRunExported).toBe(0)
+    expect(stored.scheduledExportStatus.lastRunFailed).toBe(1)
+    expect(stored['exportedIds-chatgpt']).toEqual(['a'])
+    expect(stored['exportedRecord-chatgpt-new-chat']).toBeUndefined()
+  }
+)
 
 it('applies repeat mode only to the selected platform and can return to archive-once', async () => {
   const schedule = stored.settings.scheduledExport

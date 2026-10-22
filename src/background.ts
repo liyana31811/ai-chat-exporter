@@ -1406,7 +1406,12 @@ async function runScheduledExportForPlatform(
         const url = textToDataUrl(prepared.markdown, 'text/markdown')
         try {
           await downloadAndWait(
-            { url, filename: prepared.filename, saveAs: false },
+            {
+              url, filename: prepared.filename, saveAs: false,
+              // Scheduled-only opt-in. Leave the browser's original conflict
+              // behavior untouched for legacy settings and manual exports.
+              ...(platformConfig.overwriteExistingFiles === true ? { conflictAction: 'overwrite' as const } : {}),
+            },
             60_000,
             chrome.downloads,
             {

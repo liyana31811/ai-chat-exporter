@@ -170,6 +170,7 @@ Configure filename patterns in Settings:
 | `{conv_datetime}` | Conversation start date & time | `2026-06-08T093000` |
 | `{end_date}` | Export date (alias) | `2026-06-11` |
 | `{id}` | First eight sanitized conversation ID characters | `a1b2c3d4` |
+| `{full_id}` | Full sanitized conversation ID | `a1b2c3d4-1234-4567-89ab-123456789abc` |
 | `{title}` | Session title | `how-to-learn-python` |
 | `{platform}` | Platform name | `chatgpt` |
 | `{index}` | Number (bulk) | `001` |
@@ -200,6 +201,23 @@ provider's existing list on every run, without clearing export history. The
 global run limit still applies. Repeat mode waits for the next configured
 interval after an attempted batch, including failed or partial batches; errors
 remain visible. No new ordering or change detection is introduced.
+
+**Overwrite same-name scheduled files** is a separate, per-provider opt-in;
+it is off by default. When enabled, scheduled downloads request replacement
+only at the same full download path rather than numbered duplicates. Manual
+exports are unchanged. A replacement is recorded as successful only after the
+browser reports the download complete.
+
+For one latest file per chat, turn **Skip Already Archived** off, turn this
+overwrite option on for the desired provider, and use the stable filename
+pattern **`{platform}-{full_id}`**. The platform and full ID avoid relying on
+titles or truncated IDs. Do not include mutable titles, message times, or
+export dates in that pattern if you want replacements across those changes.
+Same-name files are replaced regardless of their contents: choose a dedicated
+download subfolder, since unrelated files with that exact path are also
+replaced. Old files under different names are not deleted, and no content
+comparison or cleanup is performed. To judge recency while keeping stable
+names, keep **Include Metadata** on and inspect `last_visible_message_at`.
 
 ## How It Works
 

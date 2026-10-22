@@ -345,6 +345,8 @@ export default function Options() {
     settings.filenamePattern
       .replace(/\{date\}/g, previewConversationDate)
       .replace(/\{title\}/g, 'my-chat')
+      .replace(/\{id\}/g, 'a1b2c3d4')
+      .replace(/\{full_id\}/g, 'a1b2c3d4-1234-4567-89ab-123456789abc')
       .replace(/\{platform\}/g, 'chatgpt')
       .replace(/\{index\}/g, '001')
       .replace(/\{msgcount\}/g, '24')
@@ -838,6 +840,15 @@ export default function Options() {
                             onChange={(skipAlreadyExported) => updatePlatform({ skipAlreadyExported })}
                             description={T('Turn off to re-export up to N chats from the start of the provider list every run, using Per-platform max. Export history is kept.')}
                             ariaLabel={`${PLATFORM_LABELS[platform]}: ${T('Skip Already Archived')}`}
+                          />
+
+                          <Toggle
+                            id={`scheduled-overwrite-existing-${platform}`}
+                            label={T('Overwrite same-name scheduled files')}
+                            checked={pConfig.overwriteExistingFiles ?? false}
+                            onChange={(overwriteExistingFiles) => updatePlatform({ overwriteExistingFiles })}
+                            description={T('Replaces an existing file only when the full download path matches. Use {platform}-{full_id} for one stable file per chat. Old differently named files are not removed. Manual exports are unchanged.')}
+                            ariaLabel={`${PLATFORM_LABELS[platform]}: ${T('Overwrite same-name scheduled files')}`}
                           />
 
                           <details className="platform-advanced">

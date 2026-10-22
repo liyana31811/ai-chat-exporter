@@ -192,6 +192,7 @@ Pattern tokens include:
 - `{datetime}` — conversation start date/time, export-time fallback
 - `{conv_date}` / `{conv_datetime}` — explicit conversation-date aliases
 - `{end_date}` — export date
+- `{full_id}` — full sanitized conversation ID; `{id}` retains its eight-character behavior
 - `{title}` — sanitized conversation title
 - `{platform}` — provider key
 - `{index}` — zero-padded bulk index
